@@ -183,8 +183,3 @@ Arquivos de teste em `test/`:
 
 Para projetos **privados**, você pode remover essas entradas do `.gitignore` e commitar os arquivos com segurança.
 
----
-
-## Licença
-
-Projeto acadêmico — uso livre para fins educacionais.
