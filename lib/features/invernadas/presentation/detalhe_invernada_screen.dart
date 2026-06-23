@@ -9,6 +9,8 @@ import '../../../core/routes/app_routes.dart';
 import '../../../core/sync/sync_status_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../bovinos/data/bovino.dart';
+import '../../bovinos/data/bovino_remote_repository.dart';
+import '../../bovinos/presentation/bovinos_screen.dart';
 import '../data/invernada.dart';
 import '../data/invernada_local_repository.dart';
 import '../data/invernada_remote_repository.dart';
@@ -27,6 +29,127 @@ class _DetalheInvernadaScreenState extends State<DetalheInvernadaScreen> {
   List<Bovino> _bovinos = [];
   bool _carregando = true;
   String? _uid;
+
+  bool _modoSelecao = false;
+  final Set<int> _selecionados = {};
+
+  void _entrarModoSelecao(int id) => setState(() {
+        _modoSelecao = true;
+        _selecionados.add(id);
+      });
+
+  void _toggleSelecao(int id) => setState(() {
+        if (_selecionados.contains(id)) {
+          _selecionados.remove(id);
+          if (_selecionados.isEmpty) _modoSelecao = false;
+        } else {
+          _selecionados.add(id);
+        }
+      });
+
+  void _sairModoSelecao() => setState(() {
+        _modoSelecao = false;
+        _selecionados.clear();
+      });
+
+  void _selecionarTodos() => setState(() {
+        if (_selecionados.length == _bovinos.length) {
+          _selecionados.clear();
+          _modoSelecao = false;
+        } else {
+          _selecionados.addAll(_bovinos.map((b) => b.id!));
+        }
+      });
+
+  Future<void> _moverSelecionados() async {
+    if (_uid == null || _selecionados.isEmpty) return;
+
+    final titulo =
+        'Mover ${_selecionados.length} animal${_selecionados.length > 1 ? 'is' : ''} para';
+    final resultado =
+        await showModalBottomSheet<({Invernada? invernada, bool confirmou})>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SelecionarInvernadaSheet(
+        uid: _uid!,
+        titulo: titulo,
+        excluirInvernadaId: _invernada?.id,
+      ),
+    );
+
+    if (resultado == null || !resultado.confirmou || !mounted) return;
+
+    final ids = _selecionados.toList();
+    _sairModoSelecao();
+
+    final syncSvc = context.read<SyncStatusService>();
+    final invernadasProvider = context.read<InvernadasProvider>();
+
+    final db = await AppDatabase.instance.instanceFor(_uid);
+    final atualizados = await InvernadaLocalRepository(db).moverBovinos(
+      bovinoIds: ids,
+      novaInvernadaId: resultado.invernada?.id,
+    );
+
+    final remoto = BovinoRemoteRepository(uid: _uid!, sync: syncSvc);
+    for (final b in atualizados) {
+      remoto.salvar(b);
+    }
+
+    invernadasProvider.recarregar();
+    if (mounted) await _carregar();
+  }
+
+  Future<void> _removerDaInvernada() async {
+    if (_uid == null || _selecionados.isEmpty) return;
+    final count = _selecionados.length;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remover da invernada?'),
+        content: Text(
+          '$count animal${count > 1 ? 'is' : ''} '
+          'ser${count > 1 ? 'ão' : 'á'} '
+          'movido${count > 1 ? 's' : ''} para "Sem invernada".',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remover'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    final ids = _selecionados.toList();
+    _sairModoSelecao();
+
+    final syncSvc = context.read<SyncStatusService>();
+    final invernadasProvider = context.read<InvernadasProvider>();
+
+    final db = await AppDatabase.instance.instanceFor(_uid);
+    final atualizados = await InvernadaLocalRepository(db).moverBovinos(
+      bovinoIds: ids,
+      novaInvernadaId: null,
+    );
+
+    final remoto = BovinoRemoteRepository(uid: _uid!, sync: syncSvc);
+    for (final b in atualizados) {
+      remoto.salvar(b);
+    }
+
+    invernadasProvider.recarregar();
+    if (mounted) await _carregar();
+  }
 
   @override
   void initState() {
@@ -154,71 +277,129 @@ class _DetalheInvernadaScreenState extends State<DetalheInvernadaScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_invernada!.descricao),
-        actions: [
-          if (_bovinos.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.medical_services_outlined),
-              tooltip: 'Criar evento sanitário',
-              onPressed: _criarEventoParaInvernada,
-            ),
-          IconButton(
-            icon: const Icon(Icons.history_outlined),
-            tooltip: 'Histórico',
-            onPressed: _abrirHistorico,
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Editar',
-            onPressed: _editar,
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            tooltip: 'Excluir',
-            onPressed: _confirmarExclusao,
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _carregar,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-          children: [
-            // ── Resumo ────────────────────────────────────────────────────
-            _ResumoCard(invernada: _invernada!),
-            const SizedBox(height: 12),
+    final todosSelecionados = _bovinos.isNotEmpty &&
+        _selecionados.length == _bovinos.length;
 
-            // ── Animais ───────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: Text(
-                'Animais (${_bovinos.length})',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-            ),
-
-            if (_bovinos.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: Text('Nenhum animal nesta invernada.')),
+    return PopScope(
+      canPop: !_modoSelecao,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _sairModoSelecao();
+      },
+      child: Scaffold(
+        appBar: _modoSelecao
+            ? AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: _sairModoSelecao,
+                ),
+                title: Text('${_selecionados.length} selecionado${_selecionados.length != 1 ? 's' : ''}'),
+                actions: [
+                  TextButton(
+                    onPressed: _selecionarTodos,
+                    child: Text(todosSelecionados ? 'Desmarcar todos' : 'Selecionar todos'),
+                  ),
+                ],
               )
-            else
-              ..._bovinos.map(
-                (b) => _BovinoTile(
-                  bovino: b,
-                  onTap: () async {
-                    await Navigator.pushNamed(
-                      context,
-                      AppRoutes.detalheBovino,
-                      arguments: b.id,
-                    );
-                    if (mounted) await _carregar();
-                  },
+            : AppBar(
+                title: Text(_invernada!.descricao),
+                actions: [
+                  if (_bovinos.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.checklist_outlined),
+                      tooltip: 'Selecionar animais',
+                      onPressed: () => _entrarModoSelecao(_bovinos.first.id!),
+                    ),
+                  if (_bovinos.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.medical_services_outlined),
+                      tooltip: 'Criar evento sanitário',
+                      onPressed: _criarEventoParaInvernada,
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.history_outlined),
+                    tooltip: 'Histórico',
+                    onPressed: _abrirHistorico,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'Editar',
+                    onPressed: _editar,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: 'Excluir',
+                    onPressed: _confirmarExclusao,
+                  ),
+                ],
+              ),
+        bottomNavigationBar: _modoSelecao
+            ? SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.logout_outlined),
+                          label: const Text('Remover'),
+                          onPressed: _selecionados.isEmpty ? null : _removerDaInvernada,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.icon(
+                          icon: const Icon(Icons.swap_horiz_outlined),
+                          label: const Text('Mover'),
+                          onPressed: _selecionados.isEmpty ? null : _moverSelecionados,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : null,
+        body: RefreshIndicator(
+          onRefresh: _carregar,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+            children: [
+              if (!_modoSelecao) ...[
+                _ResumoCard(invernada: _invernada!),
+                const SizedBox(height: 12),
+              ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: Text(
+                  'Animais (${_bovinos.length})',
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
               ),
-          ],
+              if (_bovinos.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: Text('Nenhum animal nesta invernada.')),
+                )
+              else
+                ..._bovinos.map(
+                  (b) => _BovinoTile(
+                    bovino: b,
+                    modoSelecao: _modoSelecao,
+                    selecionado: _selecionados.contains(b.id),
+                    onTap: _modoSelecao
+                        ? () => _toggleSelecao(b.id!)
+                        : () async {
+                            await Navigator.pushNamed(
+                              context,
+                              AppRoutes.detalheBovino,
+                              arguments: b.id,
+                            );
+                            if (mounted) await _carregar();
+                          },
+                    onLongPress: _modoSelecao ? null : () => _entrarModoSelecao(b.id!),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -293,15 +474,32 @@ class _ResumoCard extends StatelessWidget {
 class _BovinoTile extends StatelessWidget {
   final Bovino bovino;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final bool modoSelecao;
+  final bool selecionado;
 
-  const _BovinoTile({required this.bovino, required this.onTap});
+  const _BovinoTile({
+    required this.bovino,
+    required this.onTap,
+    this.onLongPress,
+    this.modoSelecao = false,
+    this.selecionado = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 3),
+      color: selecionado
+          ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4)
+          : null,
       child: ListTile(
-        leading: _buildFoto(bovino.foto),
+        leading: modoSelecao
+            ? Checkbox(
+                value: selecionado,
+                onChanged: (_) => onTap(),
+              )
+            : _buildFoto(bovino.foto),
         title: Text(bovino.nomeAnimal ?? bovino.numeroBrinco),
         subtitle: Text(
           [
@@ -309,8 +507,9 @@ class _BovinoTile extends StatelessWidget {
             if (bovino.categoria != null) bovino.categoria!,
           ].join(' · '),
         ),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: modoSelecao ? null : const Icon(Icons.chevron_right),
         onTap: onTap,
+        onLongPress: onLongPress,
       ),
     );
   }

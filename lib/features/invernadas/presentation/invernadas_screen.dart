@@ -32,6 +32,7 @@ class _InvernadasScreenState extends State<InvernadasScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Invernadas')),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: () async {
           final provider = context.read<InvernadasProvider>();
           await Navigator.pushNamed(context, AppRoutes.cadastroInvernada);

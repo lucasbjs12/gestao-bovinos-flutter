@@ -244,6 +244,29 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
             tooltip: 'Editar',
             onPressed: _editar,
           ),
+          PopupMenuButton<String>(
+            tooltip: 'Mais opções',
+            onSelected: (v) {
+              if (v == 'excluir') _confirmarExclusao();
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'excluir',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline,
+                        color: Theme.of(context).colorScheme.error, size: 20),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Excluir animal',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.error),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -330,7 +353,7 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
                       if (b.pesoAtualKg != null)
                         _InfoItem(
                           'Peso',
-                          '${b.pesoAtualKg!.toStringAsFixed(1)} kg',
+                          '${b.pesoAtualKg! % 1 == 0 ? b.pesoAtualKg!.toStringAsFixed(0) : b.pesoAtualKg!.toStringAsFixed(1)} kg',
                         ),
                       _InfoItem('Origem', b.origem),
                       _InfoItem('Código EPC', b.codigoEpc),
@@ -582,17 +605,7 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
                 label: const Text('Dar baixa'),
               ),
             ],
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: cs.error,
-                side: BorderSide(color: cs.error),
-              ),
-              onPressed: _confirmarExclusao,
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('Excluir animal'),
-            ),
-          ],
+                  ],
         ),
       ),
     );
@@ -775,7 +788,7 @@ class _InfoGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visible = items.where((i) => i.value != null).toList();
+    final visible = items.where((i) => i.value != null && i.value!.isNotEmpty).toList();
     if (visible.isEmpty) return const SizedBox.shrink();
 
     return Wrap(

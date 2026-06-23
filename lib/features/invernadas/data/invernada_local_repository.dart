@@ -86,6 +86,47 @@ class InvernadaLocalRepository {
   Future<void> excluirPorSyncId(String syncId) =>
       _db.delete('invernadas', where: 'syncId = ?', whereArgs: [syncId]);
 
+  /// Move [bovinoIds] para [novaInvernadaId] (null = sem invernada).
+  /// Registra uma movimentação por bovino e retorna os bovinos atualizados.
+  Future<List<Bovino>> moverBovinos({
+    required List<int> bovinoIds,
+    required int? novaInvernadaId,
+  }) async {
+    final agora = DateTime.now();
+    final dataStr =
+        '${agora.day.toString().padLeft(2, '0')}/'
+        '${agora.month.toString().padLeft(2, '0')}/${agora.year}';
+    final atualizados = <Bovino>[];
+
+    await _db.transaction((txn) async {
+      for (final id in bovinoIds) {
+        final rows = await txn.rawQuery(
+          'SELECT * FROM bovinos WHERE id = ?', [id]);
+        if (rows.isEmpty) continue;
+        final anteriorId = rows.first['invernadaId'] as int?;
+
+        await txn.update(
+          'bovinos', {'invernadaId': novaInvernadaId},
+          where: 'id = ?', whereArgs: [id]);
+
+        await txn.insert('movimentacoes_invernada', {
+          'bovinoId': id,
+          'data': dataStr,
+          'dataMillis': agora.millisecondsSinceEpoch,
+          'invernadaAnteriorId': anteriorId,
+          'novaInvernadaId': novaInvernadaId,
+        });
+
+        final updated = await txn.rawQuery(
+          'SELECT *, NULL AS invernadaDescricao, NULL AS ultimoManejoMillis '
+          'FROM bovinos WHERE id = ?', [id]);
+        if (updated.isNotEmpty) atualizados.add(Bovino.fromMap(updated.first));
+      }
+    });
+
+    return atualizados;
+  }
+
   // ── Movimentações ────────────────────────────────────────────────────────
 
   Future<int> inserirMovimentacao(MovimentacaoInvernada m) =>

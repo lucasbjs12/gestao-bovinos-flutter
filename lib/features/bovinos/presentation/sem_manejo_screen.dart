@@ -70,6 +70,7 @@ class _SemManejoScreenState extends State<SemManejoScreen> {
       appBar: AppBar(title: const Text('Sem manejo sanitário')),
       floatingActionButton: filtrados.isNotEmpty
           ? FloatingActionButton.extended(
+              heroTag: null,
               onPressed: _criarEventoParaFiltrados,
               icon: const Icon(Icons.medical_services_outlined),
               label: Text('Criar evento (${filtrados.length})'),

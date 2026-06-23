@@ -52,6 +52,7 @@ class _EventosSanitariosScreenState extends State<EventosSanitariosScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Sanitário')),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: () async {
           await Navigator.pushNamed(context, AppRoutes.cadastroEvento);
           if (mounted) await provider.recarregar();

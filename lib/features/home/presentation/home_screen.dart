@@ -407,6 +407,7 @@ class _RebanhoCard extends StatelessWidget {
                           count: stats.vacas,
                           dotColor: const Color(0xFF2E7D32),
                           marginEnd: 5,
+                          onTap: () => context.read<ShellProvider>().setAba(1),
                         ),
                       ),
                       Expanded(
@@ -415,6 +416,7 @@ class _RebanhoCard extends StatelessWidget {
                           count: stats.novilhos,
                           dotColor: const Color(0xFF1976D2),
                           marginStart: 5,
+                          onTap: () => context.read<ShellProvider>().setAba(1),
                         ),
                       ),
                     ],
@@ -428,6 +430,7 @@ class _RebanhoCard extends StatelessWidget {
                           count: stats.terneiros,
                           dotColor: const Color(0xFFE65100),
                           marginEnd: 5,
+                          onTap: () => context.read<ShellProvider>().setAba(1),
                         ),
                       ),
                       Expanded(
@@ -436,6 +439,7 @@ class _RebanhoCard extends StatelessWidget {
                           count: stats.outros,
                           dotColor: const Color(0xFF757575),
                           marginStart: 5,
+                          onTap: () => context.read<ShellProvider>().setAba(1),
                         ),
                       ),
                     ],
@@ -456,6 +460,7 @@ class _CategoriaChip extends StatelessWidget {
   final Color dotColor;
   final double marginStart;
   final double marginEnd;
+  final VoidCallback? onTap;
 
   const _CategoriaChip({
     required this.label,
@@ -463,46 +468,57 @@ class _CategoriaChip extends StatelessWidget {
     required this.dotColor,
     this.marginStart = 0,
     this.marginEnd = 0,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: EdgeInsetsDirectional.only(start: marginStart, end: marginEnd),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xFFF7FAF7),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE2E8E2)),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 7),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF424242),
-                fontWeight: FontWeight.w500,
-              ),
-              overflow: TextOverflow.ellipsis,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: count > 0 ? onTap : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration:
+                      BoxDecoration(color: dotColor, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF424242),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: count > 0 ? dotColor : const Color(0xFFBDBDBD),
+                  ),
+                ),
+              ],
             ),
           ),
-          Text(
-            '$count',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: dotColor,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

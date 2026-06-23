@@ -37,7 +37,7 @@ class BovinoLocalRepository {
     ].join(' ');
 
     final orderBy = switch (ordem) {
-      BovinoOrdem.brinco    => 'b.numeroBrinco ASC',
+      BovinoOrdem.brinco    => 'CAST(b.numeroBrinco AS INTEGER) ASC, b.numeroBrinco ASC',
       BovinoOrdem.nome      => 'LOWER(COALESCE(b.nomeAnimal, b.numeroBrinco)) ASC',
       BovinoOrdem.categoria => 'b.categoria ASC, b.numeroBrinco ASC',
       BovinoOrdem.invernada => 'LOWER(COALESCE(i.descricao,"")), b.numeroBrinco ASC',
@@ -45,7 +45,11 @@ class BovinoLocalRepository {
     };
 
     final sql =
-        'SELECT b.*, i.descricao AS invernadaDescricao '
+        'SELECT b.*, i.descricao AS invernadaDescricao, '
+        '(SELECT MAX(e.dataEventoMillis) '
+        ' FROM evento_sanitario_bovino eb '
+        ' JOIN eventos_sanitarios e ON e.id = eb.eventoId '
+        ' WHERE eb.bovinoId = b.id) AS ultimoManejoMillis '
         'FROM bovinos b '
         'LEFT JOIN invernadas i ON b.invernadaId = i.id '
         'WHERE ${where.join(' AND ')} '

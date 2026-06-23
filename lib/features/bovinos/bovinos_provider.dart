@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/db/app_database.dart';
+import '../invernadas/data/invernada_local_repository.dart';
 import 'data/bovino.dart';
 import 'data/bovino_local_repository.dart';
 
@@ -76,6 +77,18 @@ class BovinosProvider extends ChangeNotifier {
       _isLoadingMais = false;
       notifyListeners();
     }
+  }
+
+  /// Move os bovinos para uma nova invernada (null = sem invernada).
+  /// Retorna os bovinos atualizados para sincronização remota.
+  Future<List<Bovino>> moverParaInvernada(
+      List<int> ids, int? novaInvernadaId) async {
+    if (_uid == null) return [];
+    final db = await AppDatabase.instance.instanceFor(_uid);
+    return InvernadaLocalRepository(db).moverBovinos(
+      bovinoIds: ids,
+      novaInvernadaId: novaInvernadaId,
+    );
   }
 
   Future<void> darBaixa(

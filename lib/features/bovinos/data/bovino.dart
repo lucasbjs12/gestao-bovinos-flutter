@@ -26,8 +26,9 @@ class Bovino {
   final int? idMae;
   final int estaDeCria;
 
-  // Transient — populated via JOIN with invernadas, not a DB column
+  // Transient — populated via JOIN/subquery, not DB columns
   final String? invernadaDescricao;
+  final int? ultimoManejoMillis;
 
   const Bovino({
     this.id,
@@ -51,6 +52,7 @@ class Bovino {
     this.idMae,
     this.estaDeCria = 0,
     this.invernadaDescricao,
+    this.ultimoManejoMillis,
   });
 
   Bovino copyWith({
@@ -82,6 +84,7 @@ class Bovino {
       invernadaId: clearInvernadaId ? null : (invernadaId ?? this.invernadaId),
       idMae: clearIdMae ? null : (idMae ?? this.idMae),
       estaDeCria: estaDeCria,
+      // transient fields not in copyWith
     );
   }
 
@@ -141,6 +144,7 @@ class Bovino {
       idMae: m['idMae'] as int?,
       estaDeCria: m['estaDeCria'] as int? ?? 0,
       invernadaDescricao: m['invernadaDescricao'] as String?,
+      ultimoManejoMillis: m['ultimoManejoMillis'] as int?,
     );
   }
 }
