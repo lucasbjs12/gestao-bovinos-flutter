@@ -15,7 +15,7 @@ class MainShellScreen extends StatelessWidget {
     _AbaInfo(label: 'Início',     icon: Icons.home_outlined,             iconSel: Icons.home),
     _AbaInfo(label: 'Bovinos',    icon: Icons.pets_outlined,             iconSel: Icons.pets),
     _AbaInfo(label: 'Invernadas', icon: Icons.grass_outlined,            iconSel: Icons.grass),
-    _AbaInfo(label: 'Sanitário',  icon: Icons.medical_services_outlined, iconSel: Icons.medical_services),
+    _AbaInfo(label: 'Manejos',    icon: Icons.medical_services_outlined, iconSel: Icons.medical_services),
     _AbaInfo(label: 'RFID',       icon: Icons.nfc_outlined,              iconSel: Icons.nfc),
   ];
 

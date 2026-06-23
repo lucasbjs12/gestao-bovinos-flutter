@@ -98,6 +98,12 @@ class _BovinosScreenState extends State<BovinosScreen> {
     if (mounted) context.read<BovinosProvider>().recarregar();
   }
 
+  Future<void> _abrirEventoRapido(int bovinoId) async {
+    await Navigator.pushNamed(context, AppRoutes.cadastroEvento,
+        arguments: [bovinoId]);
+    if (mounted) context.read<BovinosProvider>().recarregar();
+  }
+
   Future<void> _criarEventoParaSelecionados() async {
     final ids = _selecionados.toList();
     _sairModoSelecao();
@@ -416,6 +422,9 @@ class _BovinosScreenState extends State<BovinosScreen> {
                                 onLongPress: _modoSelecao
                                     ? null
                                     : () => _entrarModoSelecao(b.id!),
+                                onEvento: _modoSelecao
+                                    ? null
+                                    : () => _abrirEventoRapido(b.id!),
                               );
                             },
                           ),
@@ -459,6 +468,7 @@ class _BovinoCard extends StatelessWidget {
   final bool selecionado;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+  final VoidCallback? onEvento;
 
   const _BovinoCard({
     required this.bovino,
@@ -466,6 +476,7 @@ class _BovinoCard extends StatelessWidget {
     required this.selecionado,
     required this.onTap,
     this.onLongPress,
+    this.onEvento,
   });
 
   // Returns null (never), or days since last manejo
@@ -676,12 +687,18 @@ class _BovinoCard extends StatelessWidget {
                   ),
                 ),
 
-                // ── Seta ─────────────────────────────────────────────
+                // ── Ação rápida ──────────────────────────────────────
                 if (!modoSelecao)
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFFD1D5DB),
-                    size: 20,
+                  IconButton(
+                    icon: const Icon(
+                      Icons.medical_services_outlined,
+                      size: 20,
+                      color: Color(0xFF2E7D32),
+                    ),
+                    tooltip: 'Registrar manejo',
+                    onPressed: onEvento,
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
                   ),
               ],
             ),

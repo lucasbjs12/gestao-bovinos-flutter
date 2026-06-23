@@ -23,6 +23,7 @@ import 'features/eventos_sanitarios/presentation/detalhe_evento_screen.dart';
 import 'features/invernadas/invernadas_provider.dart';
 import 'features/invernadas/presentation/cadastro_invernada_screen.dart';
 import 'features/invernadas/presentation/detalhe_invernada_screen.dart';
+import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/shell/presentation/main_shell_screen.dart';
 import 'features/shell/shell_provider.dart';
 import 'sync/initial_sync_service.dart';
@@ -124,11 +125,17 @@ class _AuthGate extends StatefulWidget {
 class _AuthGateState extends State<_AuthGate> {
   String? _syncUid;
   RealtimeSyncService? _realtimeSync;
+  bool? _onboardingMostrado;
 
   @override
   void dispose() {
     _realtimeSync?.stop();
     super.dispose();
+  }
+
+  Future<void> _verificarOnboarding() async {
+    final mostrado = await onboardingJaMostrado();
+    if (mounted) setState(() => _onboardingMostrado = mostrado);
   }
 
   @override
@@ -139,12 +146,16 @@ class _AuthGateState extends State<_AuthGate> {
     if (auth.status == AuthStatus.authenticated && uid != null && uid != _syncUid) {
       _syncUid = uid;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _iniciarSync(uid);
+        if (mounted) {
+          _iniciarSync(uid);
+          if (_onboardingMostrado == null) _verificarOnboarding();
+        }
       });
     } else if (auth.status != AuthStatus.authenticated && _syncUid != null) {
       _syncUid = null;
       _realtimeSync?.stop();
       _realtimeSync = null;
+      _onboardingMostrado = null;
     }
 
     return switch (auth.status) {
@@ -153,7 +164,11 @@ class _AuthGateState extends State<_AuthGate> {
         ),
       AuthStatus.unauthenticated => const LoginScreen(),
       AuthStatus.unverified => const VerificacaoEmailScreen(),
-      AuthStatus.authenticated => const MainShellScreen(),
+      AuthStatus.authenticated => _onboardingMostrado == false
+          ? OnboardingScreen(
+              onConcluir: () => setState(() => _onboardingMostrado = true),
+            )
+          : const MainShellScreen(),
     };
   }
 
