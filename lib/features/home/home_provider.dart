@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/db/app_database.dart';
+
+const _kOcultarTotal = 'pref_ocultar_total_rebanho';
 
 class DashboardStats {
   final int totalRebanho;
@@ -34,9 +37,24 @@ class DashboardStats {
 class HomeProvider extends ChangeNotifier {
   DashboardStats _stats = DashboardStats.empty;
   bool _isLoading = false;
+  bool _ocultarTotal = false;
 
   DashboardStats get stats => _stats;
   bool get isLoading => _isLoading;
+  bool get ocultarTotal => _ocultarTotal;
+
+  Future<void> carregarPreferencias() async {
+    final prefs = await SharedPreferences.getInstance();
+    _ocultarTotal = prefs.getBool(_kOcultarTotal) ?? false;
+    notifyListeners();
+  }
+
+  Future<void> toggleOcultarTotal() async {
+    _ocultarTotal = !_ocultarTotal;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kOcultarTotal, _ocultarTotal);
+  }
 
   Future<void> carregar(String uid) async {
     _isLoading = true;

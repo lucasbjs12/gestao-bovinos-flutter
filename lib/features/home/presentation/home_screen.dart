@@ -31,8 +31,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _carregar() {
+    final home = context.read<HomeProvider>();
+    home.carregarPreferencias();
     final uid = context.read<AuthProvider>().currentUser?.uid;
-    if (uid != null) context.read<HomeProvider>().carregar(uid);
+    if (uid != null) home.carregar(uid);
   }
 
   String _saudacao() {
@@ -320,6 +322,9 @@ class _RebanhoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final home = context.watch<HomeProvider>();
+    final ocultar = home.ocultarTotal;
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -337,7 +342,7 @@ class _RebanhoCard extends StatelessWidget {
           children: [
             // Header verde com total
             Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+              padding: const EdgeInsets.fromLTRB(20, 20, 12, 18),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -346,7 +351,7 @@ class _RebanhoCard extends StatelessWidget {
                 ),
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
@@ -365,15 +370,29 @@ class _RebanhoCard extends StatelessWidget {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(
-                              '${stats.totalRebanho}',
-                              style: const TextStyle(
-                                fontSize: 56,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                                height: 1,
-                              ),
-                            ),
+                            ocultar
+                                ? const Padding(
+                                    padding: EdgeInsets.only(bottom: 4),
+                                    child: Text(
+                                      '•••',
+                                      style: TextStyle(
+                                        fontSize: 48,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                        height: 1,
+                                        letterSpacing: 6,
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    '${stats.totalRebanho}',
+                                    style: const TextStyle(
+                                      fontSize: 56,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                      height: 1,
+                                    ),
+                                  ),
                             const Padding(
                               padding: EdgeInsets.only(left: 8, bottom: 8),
                               child: Text(
@@ -389,7 +408,22 @@ class _RebanhoCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Icon(Icons.pets, size: 54, color: Color(0x30FFFFFF)),
+                  Column(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          ocultar
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: Colors.white.withValues(alpha: 0.7),
+                          size: 20,
+                        ),
+                        tooltip: ocultar ? 'Mostrar total' : 'Ocultar total',
+                        onPressed: () => home.toggleOcultarTotal(),
+                      ),
+                      const Icon(Icons.pets, size: 36, color: Color(0x30FFFFFF)),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -405,6 +439,7 @@ class _RebanhoCard extends StatelessWidget {
                         child: _CategoriaChip(
                           label: 'Vacas',
                           count: stats.vacas,
+                          ocultar: ocultar,
                           dotColor: const Color(0xFF2E7D32),
                           marginEnd: 5,
                           onTap: () => context.read<ShellProvider>().setAba(1),
@@ -414,6 +449,7 @@ class _RebanhoCard extends StatelessWidget {
                         child: _CategoriaChip(
                           label: 'Novilhos/as',
                           count: stats.novilhos,
+                          ocultar: ocultar,
                           dotColor: const Color(0xFF1976D2),
                           marginStart: 5,
                           onTap: () => context.read<ShellProvider>().setAba(1),
@@ -428,6 +464,7 @@ class _RebanhoCard extends StatelessWidget {
                         child: _CategoriaChip(
                           label: 'Terneiros',
                           count: stats.terneiros,
+                          ocultar: ocultar,
                           dotColor: const Color(0xFFE65100),
                           marginEnd: 5,
                           onTap: () => context.read<ShellProvider>().setAba(1),
@@ -437,6 +474,7 @@ class _RebanhoCard extends StatelessWidget {
                         child: _CategoriaChip(
                           label: 'Outros',
                           count: stats.outros,
+                          ocultar: ocultar,
                           dotColor: const Color(0xFF757575),
                           marginStart: 5,
                           onTap: () => context.read<ShellProvider>().setAba(1),
@@ -457,6 +495,7 @@ class _RebanhoCard extends StatelessWidget {
 class _CategoriaChip extends StatelessWidget {
   final String label;
   final int count;
+  final bool ocultar;
   final Color dotColor;
   final double marginStart;
   final double marginEnd;
@@ -465,6 +504,7 @@ class _CategoriaChip extends StatelessWidget {
   const _CategoriaChip({
     required this.label,
     required this.count,
+    required this.ocultar,
     required this.dotColor,
     this.marginStart = 0,
     this.marginEnd = 0,
@@ -508,11 +548,14 @@ class _CategoriaChip extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '$count',
+                  ocultar ? '•••' : '$count',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: ocultar ? 10 : 14,
                     fontWeight: FontWeight.w700,
-                    color: count > 0 ? dotColor : const Color(0xFFBDBDBD),
+                    color: ocultar
+                        ? const Color(0xFFBDBDBD)
+                        : (count > 0 ? dotColor : const Color(0xFFBDBDBD)),
+                    letterSpacing: ocultar ? 2 : 0,
                   ),
                 ),
               ],
@@ -564,7 +607,9 @@ class _AcessoRapidoGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stats = context.watch<HomeProvider>().stats;
+    final home = context.watch<HomeProvider>();
+    final stats = home.stats;
+    final ocultar = home.ocultarTotal;
     return Column(
       children: [
         Row(
@@ -575,9 +620,11 @@ class _AcessoRapidoGrid extends StatelessWidget {
                 iconBg: const Color(0xFFE8F5E9),
                 iconColor: const Color(0xFF2E7D32),
                 titulo: 'Bovinos',
-                subtitulo: stats.totalRebanho == 1
-                    ? '1 animal'
-                    : '${stats.totalRebanho} animais',
+                subtitulo: ocultar
+                    ? '••• animais'
+                    : (stats.totalRebanho == 1
+                        ? '1 animal'
+                        : '${stats.totalRebanho} animais'),
                 marginEnd: 6,
                 onTap: onBovinos,
               ),

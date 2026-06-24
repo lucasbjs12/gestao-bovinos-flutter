@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/db/app_database.dart';
+import '../../../core/widgets/marca_painter.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/sync/sync_status_service.dart';
 import '../../auth/auth_provider.dart';
@@ -566,25 +567,13 @@ class _BovinoCard extends StatelessWidget {
                         height: 64,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          color: accentColor.withValues(alpha: 0.12),
+                          color: bovino.foto != null
+                              ? accentColor.withValues(alpha: 0.12)
+                              : const Color(0xFFEEEEEE),
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: _buildFoto(bovino.foto, accentColor),
-                        ),
-                      ),
-                      // Dot de categoria no canto
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: accentColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
                         ),
                       ),
                     ],
@@ -739,11 +728,10 @@ class _BovinoCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder(Color accent) => Center(
-        child: Icon(
-          _categoriaIcon(bovino.categoria),
-          color: accent,
-          size: 28,
+  Widget _placeholder(Color accent) => const Center(
+        child: CustomPaint(
+          size: Size(36, 36),
+          painter: MarcaPainter(Color(0xFFB0BEB0)),
         ),
       );
 
@@ -761,13 +749,6 @@ class _BovinoCard extends StatelessWidget {
     };
   }
 
-  static IconData _categoriaIcon(String? cat) {
-    return switch (cat?.toLowerCase()) {
-      'touro' || 'boi' || 'novilho' => Icons.male_rounded,
-      'vaca' || 'novilha' || 'terneira' => Icons.female_rounded,
-      _ => Icons.pets_rounded,
-    };
-  }
 }
 
 // ─── Alerta sem manejo ───────────────────────────────────────────────────────
