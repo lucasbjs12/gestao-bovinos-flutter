@@ -1,1 +1,24 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"gestaobovinosapp","appId":"1:23784741029:android:505eb631b0f98c55a6554c","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"gestaobovinosapp","configurations":{"android":"1:23784741029:android:505eb631b0f98c55a6554c"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "gestaobovinosapp",
+          "appId": "1:23784741029:android:505eb631b0f98c55a6554c",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "gestaobovinosapp",
+          "configurations": {
+            "android": "1:23784741029:android:505eb631b0f98c55a6554c"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

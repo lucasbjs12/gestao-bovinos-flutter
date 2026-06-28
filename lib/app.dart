@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'core/db/app_database.dart';
@@ -48,6 +49,13 @@ class GestaoBovinosApp extends StatelessWidget {
         title: 'Gestão de Rebanho',
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
+        locale: const Locale('pt', 'BR'),
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [Locale('pt', 'BR')],
         home: const _AuthGate(),
         onGenerateRoute: (settings) {
           switch (settings.name) {

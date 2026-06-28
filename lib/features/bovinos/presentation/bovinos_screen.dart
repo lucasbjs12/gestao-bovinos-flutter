@@ -298,50 +298,50 @@ class _BovinosScreenState extends State<BovinosScreen> {
               ),
         body: Column(
           children: [
-            if (!_modoSelecao) ...[
-              // ── Barra de busca ────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x0A000000),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchCtrl,
-                    decoration: InputDecoration(
-                      hintText: 'Buscar por brinco ou nome…',
-                      hintStyle: TextStyle(
-                        color: cs.onSurfaceVariant,
-                        fontSize: 14,
-                      ),
-                      prefixIcon: Icon(Icons.search_rounded,
-                          color: cs.onSurfaceVariant),
-                      suffixIcon: _searchCtrl.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear_rounded),
-                              onPressed: () {
-                                _searchCtrl.clear();
-                                context.read<BovinosProvider>().buscar('');
-                              },
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      contentPadding:
-                          const EdgeInsets.symmetric(vertical: 14),
+            // ── Barra de busca ────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x0A000000),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
                     ),
-                    onChanged: context.read<BovinosProvider>().buscar,
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por brinco ou nome…',
+                    hintStyle: TextStyle(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 14,
+                    ),
+                    prefixIcon: Icon(Icons.search_rounded,
+                        color: cs.onSurfaceVariant),
+                    suffixIcon: _searchCtrl.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              context.read<BovinosProvider>().buscar('');
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 14),
                   ),
+                  onChanged: context.read<BovinosProvider>().buscar,
                 ),
               ),
+            ),
 
+            if (!_modoSelecao) ...[
               // ── Chips de categoria ────────────────────────────────────
               SizedBox(
                 height: 50,
@@ -761,8 +761,8 @@ class _AlertaManejoBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = critico ? const Color(0xFFEF4444) : const Color(0xFFF59E0B);
-    final bg = critico ? const Color(0xFFFFEEEE) : const Color(0xFFFFF8E1);
+    final color = critico ? const Color(0xFFEF4444) : const Color(0xFF9CA3AF);
+    final bg = critico ? const Color(0xFFFFEEEE) : const Color(0xFFF3F4F6);
     final label = dias == null
         ? 'Nunca realizou manejo'
         : 'Sem manejo há $dias dia${dias == 1 ? '' : 's'}';
@@ -770,7 +770,11 @@ class _AlertaManejoBadge extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.warning_amber_rounded, size: 11, color: color),
+        Icon(
+          critico ? Icons.warning_amber_rounded : Icons.info_outline,
+          size: 11,
+          color: color,
+        ),
         const SizedBox(width: 3),
         Flexible(
           child: Container(

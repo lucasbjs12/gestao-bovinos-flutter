@@ -240,6 +240,8 @@ class _CadastroEventoScreenState extends State<CadastroEventoScreen> {
       initialDate: _dataEvento ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
+      initialDatePickerMode: DatePickerMode.year,
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
     );
     if (picked != null) {
       setState(() {

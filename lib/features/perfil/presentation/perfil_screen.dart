@@ -1,8 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../../core/db/app_database.dart';
 import '../../auth/auth_provider.dart';
+import '../../bovinos/data/bovino_local_repository.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -84,6 +91,17 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
           const Divider(),
 
+          _SectionHeader('DADOS'),
+          ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: const Text('Exportar rebanho (CSV)'),
+            subtitle: const Text('Compartilhar planilha com todos os animais'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _exportarCSV,
+          ),
+
+          const Divider(),
+
           _SectionHeader('SESSÃO'),
           ListTile(
             leading: const Icon(Icons.logout),
@@ -107,6 +125,68 @@ class _PerfilScreenState extends State<PerfilScreen> {
           const SizedBox(height: 32),
         ],
       ),
+    );
+  }
+
+  Future<void> _exportarCSV() async {
+    final uid = context.read<AuthProvider>().currentUser?.uid;
+    if (uid == null) return;
+
+    final db = await AppDatabase.instance.instanceFor(uid);
+    final bovinos = await BovinoLocalRepository(db).listarAtivos();
+
+    if (!mounted) return;
+
+    if (bovinos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nenhum animal cadastrado para exportar.')),
+      );
+      return;
+    }
+
+    final buf = StringBuffer();
+    buf.writeln(
+      'Brinco;Nome;Categoria;Sexo;Raça;Pelagem;Peso (kg);'
+      'Nascimento;Origem;Invernada;Status;Observações',
+    );
+
+    for (final b in bovinos) {
+      String esc(String? v) {
+        if (v == null || v.isEmpty) return '';
+        if (v.contains(';') || v.contains('"') || v.contains('\n')) {
+          return '"${v.replaceAll('"', '""')}"';
+        }
+        return v;
+      }
+
+      buf.writeln([
+        esc(b.numeroBrinco),
+        esc(b.nomeAnimal),
+        esc(b.categoria),
+        esc(b.sexo),
+        esc(b.raca),
+        esc(b.pelagem),
+        b.pesoAtualKg != null
+            ? b.pesoAtualKg!.toStringAsFixed(1).replaceAll('.', ',')
+            : '',
+        esc(b.dataNascimento),
+        esc(b.origem),
+        esc(b.invernadaDescricao),
+        esc(b.status),
+        esc(b.observacoes),
+      ].join(';'));
+    }
+
+    final dir = await getTemporaryDirectory();
+    final now = DateTime.now();
+    final fileName =
+        'rebanho_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}.csv';
+    final file = File('${dir.path}/$fileName');
+    await file.writeAsString(buf.toString(), encoding: utf8);
+
+    await Share.shareXFiles(
+      [XFile(file.path, mimeType: 'text/csv')],
+      subject: 'Rebanho — $fileName',
     );
   }
 

@@ -71,9 +71,22 @@ class _HomeScreenState extends State<HomeScreen> {
             syncEstado: sync.estado,
           ),
           Expanded(
-            child: home.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _DashboardContent(stats: home.stats),
+            child: RefreshIndicator(
+              color: const Color(0xFF2E7D32),
+              onRefresh: () async {
+                final uid = context.read<AuthProvider>().currentUser?.uid;
+                if (uid != null) await context.read<HomeProvider>().carregar(uid);
+              },
+              child: home.isLoading
+                  ? const SingleChildScrollView(
+                      physics: AlwaysScrollableScrollPhysics(),
+                      child: SizedBox(
+                        height: 300,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    )
+                  : _DashboardContent(stats: home.stats),
+            ),
           ),
         ],
       ),
@@ -258,6 +271,7 @@ class _DashboardContent extends StatelessWidget {
     final atencaoVisivel = semManejoVisivel || indefinidosVisivel;
 
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

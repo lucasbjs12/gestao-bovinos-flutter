@@ -33,6 +33,18 @@ class _DetalheInvernadaScreenState extends State<DetalheInvernadaScreen> {
   bool _modoSelecao = false;
   final Set<int> _selecionados = {};
 
+  final _searchCtrl = TextEditingController();
+  String _termoBusca = '';
+
+  List<Bovino> get _bovinosFiltrados {
+    if (_termoBusca.isEmpty) return _bovinos;
+    final termo = _termoBusca.toLowerCase();
+    return _bovinos.where((b) =>
+      b.numeroBrinco.toLowerCase().contains(termo) ||
+      (b.nomeAnimal?.toLowerCase().contains(termo) ?? false),
+    ).toList();
+  }
+
   void _entrarModoSelecao(int id) => setState(() {
         _modoSelecao = true;
         _selecionados.add(id);
@@ -154,7 +166,14 @@ class _DetalheInvernadaScreenState extends State<DetalheInvernadaScreen> {
   @override
   void initState() {
     super.initState();
+    _searchCtrl.addListener(() => setState(() => _termoBusca = _searchCtrl.text));
     WidgetsBinding.instance.addPostFrameCallback((_) => _carregar());
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _carregar() async {
@@ -367,10 +386,37 @@ class _DetalheInvernadaScreenState extends State<DetalheInvernadaScreen> {
                 _ResumoCard(invernada: _invernada!),
                 const SizedBox(height: 12),
               ],
+              if (_bovinos.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar por brinco ou nome…',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      suffixIcon: _termoBusca.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () => _searchCtrl.clear(),
+                            )
+                          : null,
+                      isDense: true,
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 child: Text(
-                  'Animais (${_bovinos.length})',
+                  _termoBusca.isEmpty
+                      ? 'Animais (${_bovinos.length})'
+                      : '${_bovinosFiltrados.length} de ${_bovinos.length} animais',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
               ),
@@ -379,8 +425,15 @@ class _DetalheInvernadaScreenState extends State<DetalheInvernadaScreen> {
                   padding: EdgeInsets.all(24),
                   child: Center(child: Text('Nenhum animal nesta invernada.')),
                 )
+              else if (_bovinosFiltrados.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(
+                    child: Text('Nenhum animal com brinco "$_termoBusca".'),
+                  ),
+                )
               else
-                ..._bovinos.map(
+                ..._bovinosFiltrados.map(
                   (b) => _BovinoTile(
                     bovino: b,
                     modoSelecao: _modoSelecao,

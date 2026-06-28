@@ -359,6 +359,11 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
                       _InfoItem('Código EPC', b.codigoEpc),
                       if (b.invernadaDescricao != null)
                         _InfoItem('Invernada', b.invernadaDescricao),
+                      if (b.sexo?.toLowerCase() == 'fêmea')
+                        _InfoItem(
+                          'De cria',
+                          b.estaDeCria == 1 ? 'Sim' : 'Não',
+                        ),
                     ]),
                   ],
                 ),
@@ -1131,6 +1136,8 @@ class _DarBaixaSheetState extends State<_DarBaixaSheet> {
       initialDate: _dataBaixa,
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
+      initialDatePickerMode: DatePickerMode.year,
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
     );
     if (d != null) setState(() => _dataBaixa = d);
   }

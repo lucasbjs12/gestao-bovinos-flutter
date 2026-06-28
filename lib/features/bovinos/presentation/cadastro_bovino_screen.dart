@@ -53,8 +53,6 @@ class _CadastroBovinoScreenState extends State<CadastroBovinoScreen> {
   String? _sexo;
   String _status = 'Ativo';
   DateTime? _dataNascimento;
-  bool _estaDeCria = false;
-
   // ── Invernada ─────────────────────────────────────────────────────────────────
   List<Invernada> _invernadas = [];
   int? _invernadaId;
@@ -69,13 +67,14 @@ class _CadastroBovinoScreenState extends State<CadastroBovinoScreen> {
     'Vaca', 'Novilha', 'Terneira', 'Terneiro(a)',
     'Terneiro', 'Novilho', 'Touro', 'Boi',
   ];
-  static const _sexos = ['Fêmea', 'Macho'];
-  static const _statusOpcoes = ['Ativo', 'Em quarentena'];
+static const _statusOpcoes = ['Ativo', 'Em quarentena'];
 
-  bool get _ehFemea =>
-      _sexo == 'Fêmea' ||
-      (_categoria != null &&
-          ['Vaca', 'Novilha', 'Terneira'].contains(_categoria));
+  static const _categoriasFemea = ['Vaca', 'Novilha', 'Terneira'];
+
+  static String _sexoDaCategoria(String? cat) =>
+      _categoriasFemea.contains(cat) ? 'Fêmea' : 'Macho';
+
+  bool get _ehFemea => _categoriasFemea.contains(_categoria);
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -119,9 +118,9 @@ class _CadastroBovinoScreenState extends State<CadastroBovinoScreen> {
       _pelagemCtrl.text = b.pelagem ?? '';
       _obsCtrl.text = b.observacoes ?? '';
       _categoria = b.categoria;
-      _sexo = b.sexo;
+      _sexo = _sexoDaCategoria(b.categoria);
       _status = b.status;
-      _estaDeCria = b.estaDeCria == 1;
+
       _idMaeExistente = b.idMae;
       _fotoExistente = b.foto;
       _invernadaId = b.invernadaId;
@@ -221,7 +220,7 @@ class _CadastroBovinoScreenState extends State<CadastroBovinoScreen> {
         dataNascimento: _dataNascimento != null
             ? _formatarData(_dataNascimento!)
             : null,
-        estaDeCria: _estaDeCria ? 1 : 0,
+        estaDeCria: _ehFemea ? 1 : 0,
         invernadaId: _invernadaId,
         idMae: _bovinoId == null ? _idMaePrefilled : _idMaeExistente,
       );
@@ -300,6 +299,8 @@ class _CadastroBovinoScreenState extends State<CadastroBovinoScreen> {
       initialDate: _dataNascimento ?? DateTime.now(),
       firstDate: DateTime(1990),
       lastDate: DateTime.now(),
+      initialDatePickerMode: DatePickerMode.year,
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
     );
     if (picked != null) {
       setState(() {
@@ -355,7 +356,10 @@ class _CadastroBovinoScreenState extends State<CadastroBovinoScreen> {
                       items: _categorias
                           .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                           .toList(),
-                      onChanged: (v) => setState(() => _categoria = v),
+                      onChanged: (v) => setState(() {
+                        _categoria = v;
+                        _sexo = _sexoDaCategoria(v);
+                      }),
                       validator: (v) => v == null ? 'Selecione a categoria.' : null,
                     ),
                     const SizedBox(height: 12),
@@ -380,19 +384,6 @@ class _CadastroBovinoScreenState extends State<CadastroBovinoScreen> {
                 _FormSection(
                   titulo: 'Características',
                   children: [
-                    DropdownButtonFormField<String>(
-                      initialValue: _sexo,
-                      decoration: const InputDecoration(
-                        labelText: 'Sexo',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.transgender_outlined),
-                      ),
-                      items: _sexos
-                          .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                          .toList(),
-                      onChanged: (v) => setState(() => _sexo = v),
-                    ),
-                    const SizedBox(height: 12),
                     TextFormField(
                       controller: _racaCtrl,
                       textCapitalization: TextCapitalization.words,
@@ -403,17 +394,6 @@ class _CadastroBovinoScreenState extends State<CadastroBovinoScreen> {
                         prefixIcon: Icon(Icons.info_outline),
                       ),
                     ),
-                    if (_ehFemea) ...[
-                      const SizedBox(height: 8),
-                      CheckboxListTile(
-                        value: _estaDeCria,
-                        onChanged: (v) =>
-                            setState(() => _estaDeCria = v ?? false),
-                        title: const Text('Está de cria'),
-                        subtitle: const Text('Possui terneiro(a) vinculado(a)'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ],
                   ],
                 ),
                 const SizedBox(height: 12),

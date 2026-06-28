@@ -45,4 +45,10 @@ class BaixaBovinoRemoteRepository {
     _baixaCol.doc(bovino.id.toString()).delete();
     _syncSvc.notificarEscrita();
   }
+
+  void excluirPermanente({required String syncId, required int bovinoId}) {
+    _bovinoCol.doc(syncId).delete();
+    _baixaCol.doc(bovinoId.toString()).delete();
+    _syncSvc.notificarEscrita();
+  }
 }

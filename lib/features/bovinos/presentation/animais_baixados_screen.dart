@@ -92,6 +92,52 @@ class _AnimaisBaixadosScreenState extends State<AnimaisBaixadosScreen> {
     if (mounted) _carregar();
   }
 
+  Future<void> _excluirPermanentemente(BovinoBaixado b) async {
+    final nome = b.nomeAnimal ?? b.numeroBrinco;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir permanentemente?'),
+        content: Text(
+          'Isso apagará "$nome" e todo o seu histórico de forma irreversível. '
+          'Esta ação não pode ser desfeita.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    final uid = context.read<AuthProvider>().currentUser?.uid;
+    if (uid == null) return;
+    final syncSvc = context.read<SyncStatusService>();
+    final bovinosProvider = context.read<BovinosProvider>();
+    final homeProvider = context.read<HomeProvider>();
+
+    final db = await AppDatabase.instance.instanceFor(uid);
+    await db.delete('baixas_bovinos', where: 'id = ?', whereArgs: [b.baixaId]);
+    await db.delete('bovinos', where: 'id = ?', whereArgs: [b.id]);
+
+    BaixaBovinoRemoteRepository(uid: uid, sync: syncSvc)
+        .excluirPermanente(syncId: b.syncId, bovinoId: b.id);
+
+    bovinosProvider.recarregar();
+    homeProvider.carregar(uid);
+
+    if (mounted) _carregar();
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtrados = _filtrados;
@@ -179,9 +225,20 @@ class _AnimaisBaixadosScreenState extends State<AnimaisBaixadosScreen> {
                                   ],
                                 ),
                                 isThreeLine: b.nomeAnimal != null,
-                                trailing: TextButton(
-                                  onPressed: () => _confirmarReativacao(b),
-                                  child: const Text('Reativar'),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    TextButton(
+                                      onPressed: () => _confirmarReativacao(b),
+                                      child: const Text('Reativar'),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_forever_outlined),
+                                      color: Theme.of(context).colorScheme.error,
+                                      tooltip: 'Excluir permanentemente',
+                                      onPressed: () => _excluirPermanentemente(b),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );
