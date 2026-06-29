@@ -30,11 +30,16 @@ class AppDatabase {
 
     return openDatabase(
       dbPath,
-      version: 2,
+      version: 3,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute(
             'ALTER TABLE eventos_sanitarios ADD COLUMN syncId TEXT',
+          );
+        }
+        if (oldVersion < 3) {
+          await db.execute(
+            'ALTER TABLE invernadas ADD COLUMN hectares REAL',
           );
         }
       },
@@ -43,6 +48,7 @@ class AppDatabase {
           CREATE TABLE invernadas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             descricao TEXT,
+            hectares REAL,
             urlFoto TEXT,
             observacoes TEXT,
             syncId TEXT

@@ -383,7 +383,7 @@ class _DetalheInvernadaScreenState extends State<DetalheInvernadaScreen> {
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
             children: [
               if (!_modoSelecao) ...[
-                _ResumoCard(invernada: _invernada!),
+                _ResumoCard(invernada: _invernada!, bovinos: _bovinos),
                 const SizedBox(height: 12),
               ],
               if (_bovinos.isNotEmpty)
@@ -463,8 +463,9 @@ class _DetalheInvernadaScreenState extends State<DetalheInvernadaScreen> {
 
 class _ResumoCard extends StatelessWidget {
   final Invernada invernada;
+  final List<Bovino> bovinos;
 
-  const _ResumoCard({required this.invernada});
+  const _ResumoCard({required this.invernada, required this.bovinos});
 
   @override
   Widget build(BuildContext context) {
@@ -493,9 +494,25 @@ class _ResumoCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              '$qtd ${qtd == 1 ? 'animal' : 'animais'}',
-              style: Theme.of(context).textTheme.bodyMedium,
+            Row(
+              children: [
+                Text(
+                  '$qtd ${qtd == 1 ? 'animal' : 'animais'}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                if (invernada.hectares != null) ...[
+                  const SizedBox(width: 12),
+                  Text(
+                    '·',
+                    style: TextStyle(color: Theme.of(context).colorScheme.outline),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${invernada.hectares!.toStringAsFixed(invernada.hectares! % 1 == 0 ? 0 : 1)} ha',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ],
             ),
             if (invernada.categoriasBovinos != null &&
                 invernada.categoriasBovinos!.isNotEmpty) ...[
@@ -506,6 +523,66 @@ class _ResumoCard extends StatelessWidget {
                       color: Theme.of(context).colorScheme.outline,
                     ),
               ),
+            ],
+            if (invernada.hectares != null && bovinos.isNotEmpty) ...[
+              const Divider(height: 20),
+              Builder(builder: (context) {
+                final comPeso = bovinos.where((b) => b.pesoAtualKg != null).toList();
+                final semPeso = bovinos.length - comPeso.length;
+                final kgTotal = comPeso.fold(0.0, (s, b) => s + b.pesoAtualKg!);
+                final lotacao = kgTotal / invernada.hectares!;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.speed_outlined,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Lotação',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelMedium
+                              ?.copyWith(
+                                  fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _LotacaoItem(
+                            label: 'Peso total',
+                            valor: '${kgTotal.toStringAsFixed(0)} kg'),
+                        const SizedBox(width: 16),
+                        _LotacaoItem(
+                            label: 'Área',
+                            valor:
+                                '${invernada.hectares!.toStringAsFixed(invernada.hectares! % 1 == 0 ? 0 : 1)} ha'),
+                        const SizedBox(width: 16),
+                        _LotacaoItem(
+                            label: 'Lotação',
+                            valor:
+                                '${lotacao.toStringAsFixed(0)} kg/ha',
+                            destaque: true),
+                      ],
+                    ),
+                    if (semPeso > 0) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        '⚠️ $semPeso ${semPeso == 1 ? 'animal sem' : 'animais sem'} peso informado',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              }),
             ],
             if (invernada.observacoes != null &&
                 invernada.observacoes!.isNotEmpty) ...[
@@ -518,6 +595,43 @@ class _ResumoCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─── Item de lotação ─────────────────────────────────────────────────────────
+
+class _LotacaoItem extends StatelessWidget {
+  final String label;
+  final String valor;
+  final bool destaque;
+
+  const _LotacaoItem({
+    required this.label,
+    required this.valor,
+    this.destaque = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          valor,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: destaque ? cs.primary : cs.onSurface,
+          ),
+        ),
+      ],
     );
   }
 }

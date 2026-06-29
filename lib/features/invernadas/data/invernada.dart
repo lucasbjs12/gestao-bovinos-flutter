@@ -6,6 +6,7 @@ class Invernada {
   final int? id;
   final String syncId;
   final String descricao;
+  final double? hectares;
   final String? urlFoto;
   final String? observacoes;
 
@@ -17,6 +18,7 @@ class Invernada {
     this.id,
     required this.syncId,
     required this.descricao,
+    this.hectares,
     this.urlFoto,
     this.observacoes,
     this.quantidadeBovinos = 0,
@@ -32,6 +34,7 @@ class Invernada {
       id: id ?? this.id,
       syncId: syncId,
       descricao: descricao,
+      hectares: hectares,
       urlFoto: urlFoto,
       observacoes: observacoes,
       quantidadeBovinos: quantidadeBovinos,
@@ -43,6 +46,7 @@ class Invernada {
     final m = <String, dynamic>{
       'syncId': syncId,
       'descricao': descricao,
+      'hectares': hectares,
       'urlFoto': urlFoto,
       'observacoes': observacoes,
     };
@@ -55,6 +59,7 @@ class Invernada {
       id: m['id'] as int?,
       syncId: m['syncId'] as String? ?? _uuid.v4(),
       descricao: m['descricao'] as String? ?? '',
+      hectares: (m['hectares'] as num?)?.toDouble(),
       urlFoto: m['urlFoto'] as String?,
       observacoes: m['observacoes'] as String?,
       quantidadeBovinos: (m['quantidadeBovinos'] as int?) ?? 0,

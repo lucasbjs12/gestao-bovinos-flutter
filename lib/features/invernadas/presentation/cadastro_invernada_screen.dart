@@ -24,6 +24,7 @@ class _CadastroInvernadaScreenState extends State<CadastroInvernadaScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final _descricaoCtrl = TextEditingController();
+  final _hectaresCtrl = TextEditingController();
   final _obsCtrl = TextEditingController();
 
   Invernada? _invernadaOriginal;
@@ -46,6 +47,7 @@ class _CadastroInvernadaScreenState extends State<CadastroInvernadaScreen> {
     _invernadaOriginal = inv;
     setState(() {
       _descricaoCtrl.text = inv.descricao;
+      _hectaresCtrl.text = inv.hectares != null ? '${inv.hectares}' : '';
       _obsCtrl.text = inv.observacoes ?? '';
     });
   }
@@ -53,6 +55,7 @@ class _CadastroInvernadaScreenState extends State<CadastroInvernadaScreen> {
   @override
   void dispose() {
     _descricaoCtrl.dispose();
+    _hectaresCtrl.dispose();
     _obsCtrl.dispose();
     super.dispose();
   }
@@ -67,6 +70,7 @@ class _CadastroInvernadaScreenState extends State<CadastroInvernadaScreen> {
       final repo = InvernadaLocalRepository(db);
 
       final descricao = _descricaoCtrl.text.trim();
+      final hectares = double.tryParse(_hectaresCtrl.text.trim().replaceAll(',', '.'));
       final obs = _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim();
 
       Invernada invernada;
@@ -76,6 +80,7 @@ class _CadastroInvernadaScreenState extends State<CadastroInvernadaScreen> {
         invernada = Invernada(
           syncId: nova.syncId,
           descricao: descricao,
+          hectares: hectares,
           observacoes: obs,
         );
         final newId = await repo.inserir(invernada);
@@ -85,6 +90,7 @@ class _CadastroInvernadaScreenState extends State<CadastroInvernadaScreen> {
           id: _invernadaId,
           syncId: _invernadaOriginal!.syncId,
           descricao: descricao,
+          hectares: hectares,
           urlFoto: _invernadaOriginal?.urlFoto,
           observacoes: obs,
         );
@@ -135,6 +141,18 @@ class _CadastroInvernadaScreenState extends State<CadastroInvernadaScreen> {
                 ),
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? 'Informe a descrição.' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _hectaresCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Área (hectares)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.landscape_outlined),
+                  suffixText: 'ha',
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
