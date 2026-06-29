@@ -17,6 +17,7 @@ import '../../invernadas/data/movimentacao_invernada.dart';
 import '../data/bovino.dart';
 import '../data/bovino_local_repository.dart';
 import '../data/bovino_remote_repository.dart';
+import '../data/campos_bovino_config.dart';
 
 class CadastroBovinoScreen extends StatefulWidget {
   const CadastroBovinoScreen({super.key});
@@ -36,6 +37,9 @@ class _CadastroBovinoScreenState extends State<CadastroBovinoScreen> {
 
   // Muda para forçar recriação dos DropdownButtonFormField no modo edição
   Key _formBodyKey = const ValueKey(false);
+
+  Map<CampoBovino, bool> _camposConfig = {};
+  bool _mostrar(CampoBovino c) => _camposConfig[c] ?? true;
 
   // ── Form ─────────────────────────────────────────────────────────────────────
   final _formKey = GlobalKey<FormState>();
@@ -89,6 +93,8 @@ static const _statusOpcoes = ['Ativo', 'Em quarentena'];
       } else if (args is Map<String, dynamic>) {
         _idMaePrefilled = args['idMae'] as int?;
       }
+      final config = await CamposBovinoConfig.carregar();
+      if (mounted) setState(() => _camposConfig = config);
       await _carregarInvernadas();
       if (_bovinoId != null) await _carregarBovino();
     });
@@ -380,69 +386,11 @@ static const _statusOpcoes = ['Ativo', 'Em quarentena'];
                 ),
                 const SizedBox(height: 12),
 
-                // ── Características ───────────────────────────────────────
-                _FormSection(
-                  titulo: 'Características',
-                  children: [
-                    TextFormField(
-                      controller: _racaCtrl,
-                      textCapitalization: TextCapitalization.words,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Raça',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.info_outline),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // ── Localização ───────────────────────────────────────────
-                _FormSection(
-                  titulo: 'Localização',
-                  children: [
-                    DropdownButtonFormField<int?>(
-                      initialValue: _invernadaId,
-                      decoration: const InputDecoration(
-                        labelText: 'Invernada',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.fence_outlined),
-                      ),
-                      items: [
-                        const DropdownMenuItem<int?>(
-                          value: null,
-                          child: Text('Sem invernada'),
-                        ),
-                        ..._invernadas.map(
-                          (i) => DropdownMenuItem<int?>(
-                            value: i.id,
-                            child: Text(i.descricao),
-                          ),
-                        ),
-                      ],
-                      onChanged: (v) => setState(() => _invernadaId = v),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-
-                // ── Mais detalhes toggle ──────────────────────────────────
-                TextButton.icon(
-                  onPressed: () =>
-                      setState(() => _maisDetalhes = !_maisDetalhes),
-                  icon: Icon(_maisDetalhes
-                      ? Icons.expand_less
-                      : Icons.expand_more),
-                  label: Text(
-                    _maisDetalhes ? 'Menos detalhes' : 'Mais detalhes',
-                  ),
-                ),
-
-                if (_maisDetalhes) ...[
-                  const SizedBox(height: 4),
+                // ── Nome ─────────────────────────────────────────────────
+                if (_mostrar(CampoBovino.nomeAnimal)) ...[
+                  const SizedBox(height: 12),
                   _FormSection(
-                    titulo: 'Detalhes',
+                    titulo: 'Identificação complementar',
                     children: [
                       TextFormField(
                         controller: _nomeCtrl,
@@ -454,96 +402,343 @@ static const _statusOpcoes = ['Ativo', 'Em quarentena'];
                           prefixIcon: Icon(Icons.pets_outlined),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _dataCtrl,
-                        readOnly: true,
-                        onTap: _pickData,
-                        decoration: InputDecoration(
-                          labelText: 'Data de nascimento',
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.calendar_today_outlined),
-                          suffixIcon: _dataNascimento != null
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () => setState(() {
-                                    _dataNascimento = null;
-                                    _dataCtrl.clear();
-                                  }),
-                                )
-                              : null,
+                    ],
+                  ),
+                ],
+
+                // ── Características ───────────────────────────────────────
+                if (_mostrar(CampoBovino.raca) ||
+                    _mostrar(CampoBovino.pesoAtual) ||
+                    _mostrar(CampoBovino.dataNascimento) ||
+                    _mostrar(CampoBovino.pelagem)) ...[
+                  const SizedBox(height: 12),
+                  _FormSection(
+                    titulo: 'Características',
+                    children: [
+                      if (_mostrar(CampoBovino.raca))
+                        TextFormField(
+                          controller: _racaCtrl,
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'Raça',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.info_outline),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _pesoCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        textInputAction: TextInputAction.next,
+                      if (_mostrar(CampoBovino.pesoAtual)) ...[
+                        if (_mostrar(CampoBovino.raca)) const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _pesoCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'Peso atual (kg)',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.monitor_weight_outlined),
+                          ),
+                        ),
+                      ],
+                      if (_mostrar(CampoBovino.dataNascimento)) ...[
+                        if (_mostrar(CampoBovino.raca) || _mostrar(CampoBovino.pesoAtual))
+                          const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _dataCtrl,
+                          readOnly: true,
+                          onTap: _pickData,
+                          decoration: InputDecoration(
+                            labelText: 'Data de nascimento',
+                            border: const OutlineInputBorder(),
+                            prefixIcon: const Icon(Icons.calendar_today_outlined),
+                            suffixIcon: _dataNascimento != null
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () => setState(() {
+                                      _dataNascimento = null;
+                                      _dataCtrl.clear();
+                                    }),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ],
+                      if (_mostrar(CampoBovino.pelagem)) ...[
+                        if (_mostrar(CampoBovino.raca) ||
+                            _mostrar(CampoBovino.pesoAtual) ||
+                            _mostrar(CampoBovino.dataNascimento))
+                          const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _pelagemCtrl,
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'Pelagem',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.palette_outlined),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+
+                // ── Localização ───────────────────────────────────────────
+                if (_mostrar(CampoBovino.invernada)) ...[
+                  const SizedBox(height: 12),
+                  _FormSection(
+                    titulo: 'Localização',
+                    children: [
+                      DropdownButtonFormField<int?>(
+                        initialValue: _invernadaId,
                         decoration: const InputDecoration(
-                          labelText: 'Peso atual (kg)',
+                          labelText: 'Invernada',
                           border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.monitor_weight_outlined),
+                          prefixIcon: Icon(Icons.fence_outlined),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: _status,
-                        decoration: const InputDecoration(
-                          labelText: 'Status',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.flag_outlined),
-                        ),
-                        items: _statusOpcoes
-                            .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                            .toList(),
-                        onChanged: (v) => setState(() => _status = v ?? 'Ativo'),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _origemCtrl,
-                        textCapitalization: TextCapitalization.words,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Origem',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.place_outlined),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _pelagemCtrl,
-                        textCapitalization: TextCapitalization.words,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Pelagem',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.palette_outlined),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _epcCtrl,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Código EPC (RFID)',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.nfc_outlined),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _obsCtrl,
-                        textCapitalization: TextCapitalization.sentences,
-                        maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: 'Observações',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.notes_outlined),
-                          alignLabelWithHint: true,
-                        ),
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('Sem invernada'),
+                          ),
+                          ..._invernadas.map(
+                            (i) => DropdownMenuItem<int?>(
+                              value: i.id,
+                              child: Text(i.descricao),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) => setState(() => _invernadaId = v),
                       ),
                     ],
                   ),
+                ],
+
+                // ── Outros ───────────────────────────────────────────────
+                if (_mostrar(CampoBovino.origem) ||
+                    _mostrar(CampoBovino.codigoEpc) ||
+                    _mostrar(CampoBovino.codigoInterno) ||
+                    _mostrar(CampoBovino.observacoes)) ...[
+                  const SizedBox(height: 12),
+                  _FormSection(
+                    titulo: 'Outros',
+                    children: [
+                      if (_mostrar(CampoBovino.origem))
+                        TextFormField(
+                          controller: _origemCtrl,
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'Origem',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.place_outlined),
+                          ),
+                        ),
+                      if (_mostrar(CampoBovino.codigoEpc)) ...[
+                        if (_mostrar(CampoBovino.origem)) const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _epcCtrl,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'Código EPC (RFID)',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.nfc_outlined),
+                          ),
+                        ),
+                      ],
+                      if (_mostrar(CampoBovino.observacoes)) ...[
+                        if (_mostrar(CampoBovino.origem) || _mostrar(CampoBovino.codigoEpc))
+                          const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _obsCtrl,
+                          textCapitalization: TextCapitalization.sentences,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: 'Observações',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.notes_outlined),
+                            alignLabelWithHint: true,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+
+                // ── Status ────────────────────────────────────────────────
+                const SizedBox(height: 12),
+                _FormSection(
+                  titulo: 'Status',
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: _status,
+                      decoration: const InputDecoration(
+                        labelText: 'Status',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.flag_outlined),
+                      ),
+                      items: _statusOpcoes
+                          .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                          .toList(),
+                      onChanged: (v) => setState(() => _status = v ?? 'Ativo'),
+                    ),
+                  ],
+                ),
+
+                // ── Mais detalhes (campos fora da área principal) ─────────
+                if (CampoBovino.values.any((c) => !_mostrar(c))) ...[
+                  const SizedBox(height: 4),
+                  TextButton.icon(
+                    onPressed: () =>
+                        setState(() => _maisDetalhes = !_maisDetalhes),
+                    icon: Icon(_maisDetalhes
+                        ? Icons.expand_less
+                        : Icons.expand_more),
+                    label: Text(
+                        _maisDetalhes ? 'Menos detalhes' : 'Mais detalhes'),
+                  ),
+                  if (_maisDetalhes) ...[
+                    const SizedBox(height: 4),
+                    _FormSection(
+                      titulo: 'Detalhes adicionais',
+                      children: [
+                        if (!_mostrar(CampoBovino.nomeAnimal))
+                          TextFormField(
+                            controller: _nomeCtrl,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Nome do animal',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.pets_outlined),
+                            ),
+                          ),
+                        if (!_mostrar(CampoBovino.raca)) ...[
+                          if (!_mostrar(CampoBovino.nomeAnimal)) const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _racaCtrl,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Raça',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.info_outline),
+                            ),
+                          ),
+                        ],
+                        if (!_mostrar(CampoBovino.pesoAtual)) ...[
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _pesoCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Peso atual (kg)',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.monitor_weight_outlined),
+                            ),
+                          ),
+                        ],
+                        if (!_mostrar(CampoBovino.dataNascimento)) ...[
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _dataCtrl,
+                            readOnly: true,
+                            onTap: _pickData,
+                            decoration: InputDecoration(
+                              labelText: 'Data de nascimento',
+                              border: const OutlineInputBorder(),
+                              prefixIcon: const Icon(Icons.calendar_today_outlined),
+                              suffixIcon: _dataNascimento != null
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear),
+                                      onPressed: () => setState(() {
+                                        _dataNascimento = null;
+                                        _dataCtrl.clear();
+                                      }),
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        ],
+                        if (!_mostrar(CampoBovino.pelagem)) ...[
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _pelagemCtrl,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Pelagem',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.palette_outlined),
+                            ),
+                          ),
+                        ],
+                        if (!_mostrar(CampoBovino.invernada)) ...[
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<int?>(
+                            initialValue: _invernadaId,
+                            decoration: const InputDecoration(
+                              labelText: 'Invernada',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.fence_outlined),
+                            ),
+                            items: [
+                              const DropdownMenuItem<int?>(
+                                value: null,
+                                child: Text('Sem invernada'),
+                              ),
+                              ..._invernadas.map(
+                                (i) => DropdownMenuItem<int?>(
+                                  value: i.id,
+                                  child: Text(i.descricao),
+                                ),
+                              ),
+                            ],
+                            onChanged: (v) => setState(() => _invernadaId = v),
+                          ),
+                        ],
+                        if (!_mostrar(CampoBovino.origem)) ...[
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _origemCtrl,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Origem',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.place_outlined),
+                            ),
+                          ),
+                        ],
+                        if (!_mostrar(CampoBovino.codigoEpc)) ...[
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _epcCtrl,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Código EPC (RFID)',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.nfc_outlined),
+                            ),
+                          ),
+                        ],
+                        if (!_mostrar(CampoBovino.observacoes)) ...[
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _obsCtrl,
+                            textCapitalization: TextCapitalization.sentences,
+                            maxLines: 3,
+                            decoration: const InputDecoration(
+                              labelText: 'Observações',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.notes_outlined),
+                              alignLabelWithHint: true,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
                 ],
 
                 const SizedBox(height: 24),

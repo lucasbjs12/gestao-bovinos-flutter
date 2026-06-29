@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/db/app_database.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../auth/auth_provider.dart';
 import '../../bovinos/data/bovino_local_repository.dart';
 
@@ -92,6 +93,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
           const Divider(),
 
           _SectionHeader('DADOS'),
+          ListTile(
+            leading: const Icon(Icons.tune_outlined),
+            title: const Text('Personalizar cadastro de bovino'),
+            subtitle: const Text('Escolha quais campos aparecem no formulário'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.personalizarCadastro),
+          ),
           ListTile(
             leading: const Icon(Icons.download_outlined),
             title: const Text('Exportar rebanho (CSV)'),

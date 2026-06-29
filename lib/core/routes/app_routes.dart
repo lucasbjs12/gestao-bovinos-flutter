@@ -13,4 +13,5 @@ abstract class AppRoutes {
   static const terneirosIndefinidos = '/terneiros-indefinidos';
   static const animaisBaixados = '/animais-baixados';
   static const perfil = '/perfil';
+  static const personalizarCadastro = '/personalizar-cadastro';
 }

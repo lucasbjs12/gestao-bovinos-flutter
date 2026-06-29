@@ -14,6 +14,7 @@ import 'features/bovinos/bovinos_provider.dart';
 import 'features/bovinos/presentation/animais_baixados_screen.dart';
 import 'features/bovinos/presentation/cadastro_bovino_screen.dart';
 import 'features/bovinos/presentation/detalhe_bovino_screen.dart';
+import 'features/bovinos/presentation/personalizar_cadastro_screen.dart';
 import 'features/bovinos/presentation/sem_manejo_screen.dart';
 import 'features/bovinos/presentation/terneiros_indefinidos_screen.dart';
 import 'features/perfil/presentation/perfil_screen.dart';
@@ -112,6 +113,11 @@ class GestaoBovinosApp extends StatelessWidget {
             case AppRoutes.perfil:
               return MaterialPageRoute(
                 builder: (_) => const PerfilScreen(),
+                settings: settings,
+              );
+            case AppRoutes.personalizarCadastro:
+              return MaterialPageRoute(
+                builder: (_) => const PersonalizarCadastroScreen(),
                 settings: settings,
               );
             default:
