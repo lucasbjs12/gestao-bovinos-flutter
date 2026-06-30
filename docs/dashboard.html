@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel — Gestão de Rebanho</title>
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/lucasbjs12/gestao-bovinos-flutter/master/assets/images/marca.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --g900:#1B5E20; --g800:#2E7D32; --g700:#388E3C;
+      --g600:#43A047; --g400:#66BB6A; --g200:#A5D6A7; --g50:#E8F5E9;
+      --dark:#071209; --text:#1c1c1e; --muted:#6c6c70;
+      --border:#e5e7eb; --bg:#f7faf7; --card:#fff;
+      --side-w:240px;
+    }
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+    html,body { height:100%; }
+    body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; }
+
+    /* ── LAYOUT ────────────────────────────── */
+    .layout { display:flex; min-height:100vh; }
+
+    /* ── SIDEBAR ───────────────────────────── */
+    .sidebar {
+      width:var(--side-w); min-height:100vh; position:fixed; top:0; left:0; z-index:100;
+      background:linear-gradient(175deg, #0c2410 0%, var(--g800) 100%);
+      display:flex; flex-direction:column;
+      transition:transform .3s cubic-bezier(.4,0,.2,1);
+    }
+    .sidebar-brand {
+      display:flex; align-items:center; gap:10px; padding:22px 18px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .sidebar-brand img { width:36px; height:36px; border-radius:9px; }
+    .sidebar-brand-text { line-height:1.2; }
+    .sidebar-brand-name { font-size:13px; font-weight:700; color:#fff; }
+    .sidebar-brand-sub  { font-size:10px; color:rgba(255,255,255,.45); text-transform:uppercase; letter-spacing:.06em; }
+
+    .sidebar-nav { flex:1; padding:12px 0; overflow-y:auto; }
+    .nav-section { padding:14px 18px 6px; font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.3); }
+    .nav-item {
+      display:flex; align-items:center; gap:11px; padding:11px 18px;
+      color:rgba(255,255,255,.65); font-size:14px; font-weight:500;
+      cursor:pointer; border-radius:0; transition:all .2s;
+      border-left:3px solid transparent; text-decoration:none;
+    }
+    .nav-item:hover { background:rgba(255,255,255,.07); color:#fff; }
+    .nav-item.active { background:rgba(255,255,255,.12); color:#fff; border-left-color:var(--g400); font-weight:600; }
+    .nav-item svg { flex-shrink:0; opacity:.75; }
+    .nav-item.active svg { opacity:1; }
+
+    .sidebar-footer { padding:16px 18px; border-top:1px solid rgba(255,255,255,.08); }
+    .user-info { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+    .user-avatar {
+      width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.12);
+      display:flex; align-items:center; justify-content:center;
+      font-size:14px; font-weight:700; color:#fff; flex-shrink:0;
+    }
+    .user-email { font-size:12px; color:rgba(255,255,255,.55); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .btn-logout {
+      width:100%; padding:9px; border:1px solid rgba(255,255,255,.15); border-radius:8px;
+      background:transparent; color:rgba(255,255,255,.6); font-size:13px; font-family:inherit;
+      cursor:pointer; transition:all .2s; display:flex; align-items:center; justify-content:center; gap:7px;
+    }
+    .btn-logout:hover { background:rgba(255,0,0,.12); border-color:rgba(255,80,80,.3); color:#ff8080; }
+
+    /* ── MAIN ──────────────────────────────── */
+    .main { margin-left:var(--side-w); flex:1; display:flex; flex-direction:column; min-height:100vh; }
+
+    .topbar {
+      position:sticky; top:0; z-index:50; background:rgba(247,250,247,.9);
+      backdrop-filter:blur(16px); border-bottom:1px solid var(--border);
+      padding:14px 28px; display:flex; align-items:center; justify-content:space-between;
+    }
+    .topbar-title { font-size:17px; font-weight:700; }
+    .topbar-right { display:flex; align-items:center; gap:12px; }
+    .fazenda-pill {
+      display:inline-flex; align-items:center; gap:6px;
+      background:var(--g50); color:var(--g800); font-size:12px; font-weight:600;
+      padding:5px 12px; border-radius:100px;
+    }
+    .hamburger {
+      display:none; background:none; border:none; cursor:pointer; padding:4px;
+      color:var(--text);
+    }
+
+    .content { padding:28px; flex:1; }
+
+    /* ── STAT CARDS ────────────────────────── */
+    .stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+    @media(max-width:900px){ .stat-grid{ grid-template-columns:repeat(2,1fr); } }
+    @media(max-width:500px){ .stat-grid{ grid-template-columns:1fr 1fr; } }
+
+    .stat-card {
+      background:var(--card); border-radius:14px; padding:20px;
+      border:1px solid var(--border); display:flex; align-items:flex-start; gap:14px;
+      transition:box-shadow .2s;
+    }
+    .stat-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.07); }
+    .stat-icon {
+      width:44px; height:44px; border-radius:12px;
+      display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;
+    }
+    .stat-icon.green  { background:var(--g50); }
+    .stat-icon.blue   { background:#EFF6FF; }
+    .stat-icon.orange { background:#FFF7ED; }
+    .stat-icon.purple { background:#F5F3FF; }
+    .stat-val  { font-size:26px; font-weight:800; line-height:1; }
+    .stat-lbl  { font-size:12px; color:var(--muted); margin-top:4px; }
+
+    /* ── SECTION CARD ──────────────────────── */
+    .section-card {
+      background:var(--card); border-radius:16px; border:1px solid var(--border);
+      overflow:hidden;
+    }
+    .section-card-header {
+      padding:18px 22px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+    }
+    .section-card-title { font-size:15px; font-weight:700; }
+
+    /* ── SEARCH & FILTERS ──────────────────── */
+    .filters { display:flex; gap:10px; flex-wrap:wrap; }
+    .search-box {
+      display:flex; align-items:center; gap:8px;
+      background:var(--bg); border:1.5px solid var(--border); border-radius:9px;
+      padding:8px 12px; min-width:200px;
+    }
+    .search-box svg { color:var(--muted); flex-shrink:0; }
+    .search-box input {
+      border:none; background:transparent; outline:none; font-size:13px;
+      font-family:inherit; color:var(--text); width:100%;
+    }
+    select.filter {
+      border:1.5px solid var(--border); border-radius:9px; padding:8px 12px;
+      font-size:13px; font-family:inherit; color:var(--text); background:var(--bg);
+      outline:none; cursor:pointer;
+    }
+    select.filter:focus { border-color:var(--g600); }
+
+    /* ── TABLE ─────────────────────────────── */
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; }
+    th {
+      background:var(--bg); font-size:11px; font-weight:700; color:var(--muted);
+      text-transform:uppercase; letter-spacing:.07em; padding:12px 16px;
+      border-bottom:1px solid var(--border); text-align:left; white-space:nowrap;
+    }
+    td { padding:12px 16px; font-size:13px; border-bottom:1px solid var(--border); }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:var(--bg); }
+    .bovino-foto {
+      width:34px; height:34px; border-radius:8px; object-fit:cover;
+      background:var(--g50); display:flex; align-items:center; justify-content:center; font-size:18px;
+    }
+    .bovino-foto img { width:34px; height:34px; border-radius:8px; object-fit:cover; }
+    .badge {
+      display:inline-flex; padding:3px 9px; border-radius:100px; font-size:11px; font-weight:600;
+    }
+    .badge-green  { background:var(--g50); color:var(--g800); }
+    .badge-red    { background:#FEF2F2; color:#DC2626; }
+    .badge-yellow { background:#FFFBEB; color:#D97706; }
+    .badge-gray   { background:#F3F4F6; color:#6B7280; }
+
+    /* ── INVERNADA CARDS ───────────────────── */
+    .inv-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; padding:20px; }
+    .inv-card {
+      background:var(--bg); border:1px solid var(--border); border-radius:14px; padding:22px;
+      transition:transform .2s,box-shadow .2s;
+    }
+    .inv-card:hover { transform:translateY(-3px); box-shadow:0 8px 28px rgba(0,0,0,.08); }
+    .inv-card-head { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+    .inv-icon {
+      width:44px; height:44px; background:var(--g50); border-radius:12px;
+      display:flex; align-items:center; justify-content:center; font-size:22px;
+    }
+    .inv-name { font-size:15px; font-weight:700; }
+    .inv-ha   { font-size:12px; color:var(--muted); }
+    .inv-stats { display:flex; gap:16px; margin-bottom:14px; }
+    .inv-stat  { flex:1; text-align:center; }
+    .inv-stat-val { font-size:20px; font-weight:800; }
+    .inv-stat-lbl { font-size:11px; color:var(--muted); }
+    .lotacao-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+    .lotacao-fill { height:100%; border-radius:3px; transition:width .5s; }
+    .lotacao-fill.ok    { background:var(--g500); }
+    .lotacao-fill.warn  { background:#F59E0B; }
+    .lotacao-fill.over  { background:#EF4444; }
+    .lotacao-lbl { font-size:11px; color:var(--muted); margin-top:5px; text-align:right; }
+
+    /* ── EVENTO LIST ───────────────────────── */
+    .evento-list { display:flex; flex-direction:column; }
+    .evento-item {
+      display:flex; align-items:center; gap:14px; padding:14px 22px;
+      border-bottom:1px solid var(--border); transition:background .15s;
+    }
+    .evento-item:last-child { border-bottom:none; }
+    .evento-item:hover { background:var(--bg); }
+    .evento-icon {
+      width:40px; height:40px; border-radius:10px; background:var(--g50);
+      display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;
+    }
+    .evento-tipo { font-size:14px; font-weight:600; }
+    .evento-meta { font-size:12px; color:var(--muted); margin-top:2px; }
+    .evento-date { margin-left:auto; font-size:12px; color:var(--muted); white-space:nowrap; }
+
+    /* ── EMPTY / LOADING ───────────────────── */
+    .empty, .loading-state {
+      text-align:center; padding:60px 24px; color:var(--muted);
+      display:flex; flex-direction:column; align-items:center; gap:12px;
+    }
+    .empty-icon { font-size:48px; }
+    .empty p    { font-size:14px; }
+    .loader {
+      width:32px; height:32px; border:3px solid var(--border);
+      border-top-color:var(--g600); border-radius:50%;
+      animation:spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── OVERLAY ───────────────────────────── */
+    .overlay {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.4);
+      z-index:90; backdrop-filter:blur(2px);
+    }
+    .overlay.show { display:block; }
+
+    /* ── RESPONSIVE ────────────────────────── */
+    @media(max-width:768px) {
+      .sidebar { transform:translateX(-100%); }
+      .sidebar.open { transform:translateX(0); box-shadow:8px 0 40px rgba(0,0,0,.3); }
+      .main { margin-left:0; }
+      .hamburger { display:block; }
+      .content { padding:16px; }
+      .topbar { padding:12px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- ── SIDEBAR ─────────────────────────────────────────── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <img src="https://raw.githubusercontent.com/lucasbjs12/gestao-bovinos-flutter/master/assets/images/marca.png" alt="Logo" />
+    <div class="sidebar-brand-text">
+      <div class="sidebar-brand-name">Gestão de Rebanho</div>
+      <div class="sidebar-brand-sub">Painel Web</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section">Menu</div>
+    <div class="nav-item active" data-section="home" onclick="nav(this,'home')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Início
+    </div>
+    <div class="nav-item" data-section="bovinos" onclick="nav(this,'bovinos')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+      Bovinos
+    </div>
+    <div class="nav-item" data-section="invernadas" onclick="nav(this,'invernadas')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="3,11 12,2 21,11"/><path d="M5 11v8a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-8"/></svg>
+      Invernadas
+    </div>
+    <div class="nav-item" data-section="sanidade" onclick="nav(this,'sanidade')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Sanidade
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-avatar" id="avatar">?</div>
+      <div class="user-email" id="user-email">…</div>
+    </div>
+    <button class="btn-logout" onclick="sair()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Sair
+    </button>
+  </div>
+</aside>
+
+<!-- ── MAIN ────────────────────────────────────────────── -->
+<div class="main">
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:14px">
+      <button class="hamburger" onclick="openSidebar()">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <span class="topbar-title" id="topbar-title">Início</span>
+    </div>
+    <div class="topbar-right">
+      <div class="fazenda-pill">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="3,11 12,2 21,11"/><path d="M5 11v8a1 1 0 001 1h12a1 1 0 001-1v-8"/></svg>
+        <span id="fazenda-nome">Minha Fazenda</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="content" id="content">
+    <div class="loading-state">
+      <div class="loader"></div>
+      <p>Carregando dados…</p>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, collection, getDocs, query, orderBy, where, limit }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const cfg = {
+  apiKey:"AIzaSyDfyGdkHO_MU-tzO75UJyMzy9UsZl-2EKE",
+  authDomain:"gestaobovinosapp.firebaseapp.com",
+  projectId:"gestaobovinosapp",
+  storageBucket:"gestaobovinosapp.firebasestorage.app",
+  messagingSenderId:"23784741029",
+  appId:"1:23784741029:web:120a487f5b39276ca6554c"
+};
+const app  = initializeApp(cfg);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ── State ─────────────────────────────────────────────────
+let uid = null;
+let cache = { bovinos:null, invernadas:null, eventos:null };
+let invMap = {}; // local id → descricao
+let currentSection = 'home';
+let searchTerm = '';
+let filterCat  = '';
+let filterInv  = '';
+let filterStatus = '';
+
+// ── Auth guard ────────────────────────────────────────────
+onAuthStateChanged(auth, async u => {
+  if (!u) { window.location.href = '/login.html'; return; }
+  uid = u.uid;
+  const email = u.email ?? '';
+  document.getElementById('user-email').textContent = email;
+  document.getElementById('avatar').textContent = email[0].toUpperCase();
+  document.getElementById('fazenda-nome').textContent = u.displayName || 'Minha Fazenda';
+  await loadInvernadas();
+  renderSection('home');
+});
+
+// ── Firebase helpers ──────────────────────────────────────
+async function col(name) {
+  return getDocs(collection(db, 'fazendas', uid, name));
+}
+
+async function loadBovinos() {
+  if (cache.bovinos) return cache.bovinos;
+  const snap = await col('bovinos');
+  cache.bovinos = snap.docs.map(d => d.data());
+  return cache.bovinos;
+}
+
+async function loadInvernadas() {
+  if (cache.invernadas) return cache.invernadas;
+  const snap = await col('invernadas');
+  cache.invernadas = snap.docs.map(d => d.data());
+  cache.invernadas.forEach(i => { invMap[i.id] = i.descricao; });
+  return cache.invernadas;
+}
+
+async function loadEventos() {
+  if (cache.eventos) return cache.eventos;
+  const snap = await col('eventos_sanitarios');
+  cache.eventos = snap.docs.map(d => d.data());
+  cache.eventos.sort((a,b) => (b.dataEventoMillis||0) - (a.dataEventoMillis||0));
+  return cache.eventos;
+}
+
+// ── Navigation ────────────────────────────────────────────
+const titles = { home:'Início', bovinos:'Bovinos', invernadas:'Invernadas', sanidade:'Sanidade' };
+
+window.nav = (el, section) => {
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  currentSection = section;
+  searchTerm = ''; filterCat = ''; filterInv = ''; filterStatus = '';
+  document.getElementById('topbar-title').textContent = titles[section];
+  closeSidebar();
+  renderSection(section);
+};
+
+window.openSidebar  = () => {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+};
+window.closeSidebar = () => {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+};
+
+window.sair = async () => {
+  await signOut(auth);
+  window.location.href = '/';
+};
+
+// ── Render dispatcher ─────────────────────────────────────
+async function renderSection(s) {
+  const el = document.getElementById('content');
+  el.innerHTML = `<div class="loading-state"><div class="loader"></div><p>Carregando…</p></div>`;
+  if (s === 'home')       await renderHome(el);
+  if (s === 'bovinos')    await renderBovinos(el);
+  if (s === 'invernadas') await renderInvernadas(el);
+  if (s === 'sanidade')   await renderSanidade(el);
+}
+
+// ── HOME ──────────────────────────────────────────────────
+async function renderHome(el) {
+  const [bovinos, invernadas, eventos] = await Promise.all([loadBovinos(), loadInvernadas(), loadEventos()]);
+  const ativos   = bovinos.filter(b => b.status === 'Ativo').length;
+  const comPeso  = bovinos.filter(b => b.pesoAtualKg).length;
+  const recentes = [...bovinos].sort((a,b) => (b.updatedAt?.seconds||0) - (a.updatedAt?.seconds||0)).slice(0,8);
+
+  el.innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon green">🐄</div>
+        <div><div class="stat-val">${bovinos.length}</div><div class="stat-lbl">Total de animais</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue">✅</div>
+        <div><div class="stat-val">${ativos}</div><div class="stat-lbl">Animais ativos</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange">🌿</div>
+        <div><div class="stat-val">${invernadas.length}</div><div class="stat-lbl">Invernadas</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon purple">💉</div>
+        <div><div class="stat-val">${eventos.length}</div><div class="stat-lbl">Eventos sanitários</div></div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-card-header">
+        <span class="section-card-title">Animais recentes</span>
+        <span style="font-size:12px;color:var(--muted)">Últimos adicionados</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Foto</th><th>Brinco</th><th>Categoria</th><th>Invernada</th><th>Peso</th><th>Status</th>
+          </tr></thead>
+          <tbody>
+            ${recentes.length ? recentes.map(b => bovinoRow(b)).join('') : `<tr><td colspan="6"><div class="empty"><div class="empty-icon">🐄</div><p>Nenhum animal cadastrado ainda.</p></div></td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    ${eventos.length ? `
+    <div class="section-card" style="margin-top:20px">
+      <div class="section-card-header">
+        <span class="section-card-title">Últimos eventos sanitários</span>
+      </div>
+      <div class="evento-list">
+        ${eventos.slice(0,5).map(e => eventoItem(e)).join('')}
+      </div>
+    </div>` : ''}
+  `;
+}
+
+// ── BOVINOS ───────────────────────────────────────────────
+async function renderBovinos(el) {
+  const bovinos = await loadBovinos();
+  const categorias = [...new Set(bovinos.map(b => b.categoria).filter(Boolean))].sort();
+  const invNomes   = [...new Set(bovinos.map(b => invMap[b.invernadaId]).filter(Boolean))].sort();
+
+  el.innerHTML = `
+    <div class="section-card">
+      <div class="section-card-header">
+        <span class="section-card-title">Bovinos <span style="color:var(--muted);font-weight:400;font-size:13px" id="count-lbl"></span></span>
+        <div class="filters">
+          <div class="search-box">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input placeholder="Buscar por brinco…" id="search" oninput="filtrarBovinos()" />
+          </div>
+          <select class="filter" id="f-cat" onchange="filtrarBovinos()">
+            <option value="">Todas categorias</option>
+            ${categorias.map(c => `<option>${c}</option>`).join('')}
+          </select>
+          <select class="filter" id="f-inv" onchange="filtrarBovinos()">
+            <option value="">Todas invernadas</option>
+            ${invNomes.map(n => `<option>${n}</option>`).join('')}
+          </select>
+          <select class="filter" id="f-status" onchange="filtrarBovinos()">
+            <option value="">Todos status</option>
+            <option>Ativo</option><option>Baixado</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap" id="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Foto</th><th>Brinco</th><th>Categoria</th><th>Sexo</th><th>Invernada</th><th>Peso</th><th>Status</th>
+          </tr></thead>
+          <tbody id="bovinos-tbody"></tbody>
+        </table>
+      </div>
+    </div>`;
+
+  window.__bovinos = bovinos;
+  filtrarBovinos();
+}
+
+window.filtrarBovinos = () => {
+  const q   = (document.getElementById('search')?.value  ?? '').toLowerCase();
+  const cat = (document.getElementById('f-cat')?.value   ?? '');
+  const inv = (document.getElementById('f-inv')?.value   ?? '');
+  const sta = (document.getElementById('f-status')?.value?? '');
+
+  const list = (window.__bovinos || []).filter(b =>
+    (!q   || (b.numeroBrinco||'').toLowerCase().includes(q)) &&
+    (!cat || b.categoria === cat) &&
+    (!inv || invMap[b.invernadaId] === inv) &&
+    (!sta || b.status === sta)
+  );
+
+  const tbody = document.getElementById('bovinos-tbody');
+  const lbl   = document.getElementById('count-lbl');
+  if (!tbody) return;
+  lbl && (lbl.textContent = `(${list.length})`);
+  tbody.innerHTML = list.length
+    ? list.map(b => bovinoRow(b)).join('')
+    : `<tr><td colspan="7"><div class="empty"><div class="empty-icon">🔍</div><p>Nenhum animal encontrado.</p></div></td></tr>`;
+};
+
+// ── INVERNADAS ────────────────────────────────────────────
+async function renderInvernadas(el) {
+  const [invernadas, bovinos] = await Promise.all([loadInvernadas(), loadBovinos()]);
+  const countMap = {};
+  bovinos.filter(b => b.status === 'Ativo').forEach(b => {
+    if (b.invernadaId) countMap[b.invernadaId] = (countMap[b.invernadaId]||0) + 1;
+  });
+
+  el.innerHTML = invernadas.length
+    ? `<div class="inv-grid">${invernadas.map(inv => {
+        const n  = countMap[inv.id] || 0;
+        const ha = inv.hectares || 0;
+        const lotMax = ha * 1.5;
+        const pct = lotMax > 0 ? Math.min(Math.round(n / lotMax * 100), 100) : 0;
+        const cls = pct >= 100 ? 'over' : pct >= 75 ? 'warn' : 'ok';
+        return `
+          <div class="inv-card">
+            <div class="inv-card-head">
+              <div class="inv-icon">🌿</div>
+              <div>
+                <div class="inv-name">${inv.descricao}</div>
+                <div class="inv-ha">${ha ? ha + ' ha' : 'Área não informada'}</div>
+              </div>
+            </div>
+            <div class="inv-stats">
+              <div class="inv-stat"><div class="inv-stat-val">${n}</div><div class="inv-stat-lbl">Animais</div></div>
+              ${ha ? `<div class="inv-stat"><div class="inv-stat-val">${(n/ha).toFixed(1)}</div><div class="inv-stat-lbl">UA/ha</div></div>` : ''}
+            </div>
+            ${ha ? `
+            <div class="lotacao-bar"><div class="lotacao-fill ${cls}" style="width:${pct}%"></div></div>
+            <div class="lotacao-lbl">Lotação: ${pct}%</div>` : ''}
+            ${inv.observacoes ? `<p style="font-size:12px;color:var(--muted);margin-top:10px">${inv.observacoes}</p>` : ''}
+          </div>`;
+      }).join('')}</div>`
+    : `<div class="section-card"><div class="empty"><div class="empty-icon">🌿</div><p>Nenhuma invernada cadastrada.</p></div></div>`;
+}
+
+// ── SANIDADE ──────────────────────────────────────────────
+async function renderSanidade(el) {
+  const [eventos, bovinos] = await Promise.all([loadEventos(), loadBovinos()]);
+  const idxMap = {};
+  bovinos.forEach(b => { if (b.id) idxMap[b.id] = b; });
+
+  const tipoIcon = t => ({ 'Vacina':'💉', 'Vermifugação':'🪱', 'Tratamento':'🩺', 'Pesagem':'⚖️' }[t] ?? '📋');
+
+  el.innerHTML = `
+    <div class="section-card">
+      <div class="section-card-header">
+        <span class="section-card-title">Eventos sanitários (${eventos.length})</span>
+      </div>
+      ${eventos.length
+        ? `<div class="evento-list">${eventos.map(e => eventoItem(e, tipoIcon)).join('')}</div>`
+        : `<div class="empty"><div class="empty-icon">💉</div><p>Nenhum evento registrado.</p></div>`
+      }
+    </div>`;
+}
+
+// ── Helpers de render ─────────────────────────────────────
+function bovinoRow(b) {
+  const statusCls = b.status === 'Ativo' ? 'badge-green' : 'badge-red';
+  const inv = invMap[b.invernadaId] || '—';
+  const peso = b.pesoAtualKg ? `${b.pesoAtualKg} kg` : '<span style="color:var(--muted)">—</span>';
+  const foto = b.foto
+    ? `<div class="bovino-foto"><img src="${b.foto}" alt="" onerror="this.parentElement.innerHTML='🐄'" /></div>`
+    : `<div class="bovino-foto">🐄</div>`;
+  return `<tr>
+    <td>${foto}</td>
+    <td><strong>${b.numeroBrinco || '—'}</strong></td>
+    <td>${b.categoria || '—'}</td>
+    <td>${b.sexo || '—'}</td>
+    <td>${inv}</td>
+    <td>${peso}</td>
+    <td><span class="badge ${statusCls}">${b.status || '—'}</span></td>
+  </tr>`;
+}
+
+function eventoItem(e, iconFn) {
+  const ico = iconFn ? iconFn(e.tipo) : ({'Vacina':'💉','Vermifugação':'🪱','Tratamento':'🩺','Pesagem':'⚖️'}[e.tipo] ?? '📋');
+  const prod = e.produtoUtilizado ? ` · ${e.produtoUtilizado}` : '';
+  const n = (e.bovinoIds||[]).length;
+  return `<div class="evento-item">
+    <div class="evento-icon">${ico}</div>
+    <div>
+      <div class="evento-tipo">${e.tipo || 'Evento'}</div>
+      <div class="evento-meta">${n > 0 ? `${n} animal${n!==1?'is':''}` : ''}${prod}${e.responsavel ? ` · ${e.responsavel}` : ''}</div>
+    </div>
+    <div class="evento-date">${e.dataEvento || ''}</div>
+  </div>`;
+}
+</script>
+</body>
+</html>

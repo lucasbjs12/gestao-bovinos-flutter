@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Entrar — Gestão de Rebanho</title>
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/lucasbjs12/gestao-bovinos-flutter/master/assets/images/marca.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --g900:#1B5E20; --g800:#2E7D32; --g600:#43A047; --g400:#66BB6A;
+      --dark:#071209; --text:#1c1c1e; --muted:#6c6c70; --border:#e5e7eb;
+    }
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      font-family:'Inter',-apple-system,sans-serif; min-height:100vh;
+      background:
+        radial-gradient(ellipse 120% 80% at 50% 110%, rgba(76,175,80,.28), transparent 55%),
+        radial-gradient(ellipse 50% 50% at 10% 20%, rgba(46,125,50,.18), transparent 55%),
+        linear-gradient(155deg, var(--dark) 0%, #0c2e10 55%, #163d1a 100%);
+      display:flex; align-items:center; justify-content:center; padding:24px;
+      position:relative; overflow:hidden;
+    }
+    /* Orbs */
+    body::before, body::after {
+      content:''; position:fixed; border-radius:50%; filter:blur(90px); pointer-events:none;
+    }
+    body::before { width:400px; height:400px; background:rgba(76,175,80,.12); top:-100px; right:-80px; }
+    body::after  { width:300px; height:300px; background:rgba(46,125,50,.15); bottom:-60px; left:-60px; }
+
+    .card {
+      background:#fff; border-radius:24px; padding:44px 40px;
+      width:100%; max-width:420px; position:relative; z-index:1;
+      box-shadow:0 32px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.06);
+      animation:cardIn .5s cubic-bezier(.22,1,.36,1);
+    }
+    @keyframes cardIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:none} }
+
+    .brand { display:flex; align-items:center; gap:12px; justify-content:center; margin-bottom:36px; }
+    .brand img { width:48px; height:48px; border-radius:12px; }
+    .brand-text { text-align:left; }
+    .brand-name { font-size:16px; font-weight:700; color:var(--text); line-height:1.2; }
+    .brand-sub  { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:2px; }
+
+    .card-title { font-size:22px; font-weight:800; color:var(--text); text-align:center; margin-bottom:6px; }
+    .card-hint  { font-size:13px; color:var(--muted); text-align:center; margin-bottom:32px; }
+
+    .field { margin-bottom:16px; }
+    label  { display:block; font-size:12px; font-weight:600; color:var(--text); margin-bottom:6px; letter-spacing:.02em; }
+    input  {
+      width:100%; padding:13px 16px; border:1.5px solid var(--border);
+      border-radius:10px; font-size:15px; font-family:inherit; outline:none;
+      background:#fafafa; color:var(--text); transition:border-color .2s,box-shadow .2s;
+    }
+    input:focus { border-color:var(--g600); box-shadow:0 0 0 3px rgba(67,160,71,.12); background:#fff; }
+    input::placeholder { color:#b0b0b0; }
+
+    .forgot { text-align:right; margin-top:6px; }
+    .forgot a { font-size:12px; color:var(--muted); text-decoration:none; }
+    .forgot a:hover { color:var(--g800); }
+
+    .err {
+      background:#fef2f2; border:1px solid #fecaca; border-radius:10px;
+      padding:11px 14px; font-size:13px; color:#dc2626; margin-bottom:18px;
+      display:none; align-items:center; gap:8px;
+    }
+    .err.show { display:flex; }
+
+    .btn {
+      width:100%; padding:15px; margin-top:10px; border:none; border-radius:12px;
+      font-size:15px; font-weight:700; font-family:inherit; cursor:pointer;
+      background:var(--g800); color:#fff;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      transition:all .25s; position:relative; overflow:hidden;
+    }
+    .btn::after {
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(rgba(255,255,255,.08),transparent);
+    }
+    .btn:hover:not(:disabled) { background:var(--g900); transform:translateY(-1px); box-shadow:0 8px 24px rgba(46,125,50,.4); }
+    .btn:active:not(:disabled) { transform:translateY(0); }
+    .btn:disabled { opacity:.65; cursor:not-allowed; transform:none; }
+
+    .spinner {
+      width:16px; height:16px; border:2px solid rgba(255,255,255,.3);
+      border-top-color:#fff; border-radius:50%; display:none;
+      animation:spin .65s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    .divider { border:none; border-top:1px solid var(--border); margin:24px 0; }
+
+    .back { text-align:center; font-size:13px; color:var(--muted); }
+    .back a { color:var(--g800); text-decoration:none; font-weight:500; }
+    .back a:hover { text-decoration:underline; }
+
+    @media(max-width:480px) { .card { padding:36px 24px; } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <img src="https://raw.githubusercontent.com/lucasbjs12/gestao-bovinos-flutter/master/assets/images/marca.png" alt="Logo" />
+      <div class="brand-text">
+        <div class="brand-name">Gestão de Rebanho</div>
+        <div class="brand-sub">Painel do Cliente</div>
+      </div>
+    </div>
+
+    <h1 class="card-title">Bem-vindo de volta</h1>
+    <p class="card-hint">Use as mesmas credenciais do aplicativo</p>
+
+    <div class="err" id="err">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <span id="err-msg"></span>
+    </div>
+
+    <div class="field">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" placeholder="seu@email.com" autocomplete="email" />
+    </div>
+    <div class="field">
+      <label for="pwd">Senha</label>
+      <input type="password" id="pwd" placeholder="••••••••" autocomplete="current-password" />
+      <div class="forgot"><a href="#" onclick="recuperar(event)">Esqueci minha senha</a></div>
+    </div>
+
+    <button class="btn" id="btn" onclick="entrar()">
+      <span id="btn-lbl">Entrar no painel</span>
+      <div class="spinner" id="spin"></div>
+    </button>
+
+    <hr class="divider" />
+    <p class="back">Não tem conta? Use o <a href="/">aplicativo</a> para se cadastrar.</p>
+    <p class="back" style="margin-top:10px"><a href="/">← Voltar ao site</a></p>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail }
+      from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+    const app = initializeApp({
+      apiKey: "AIzaSyDfyGdkHO_MU-tzO75UJyMzy9UsZl-2EKE",
+      authDomain: "gestaobovinosapp.firebaseapp.com",
+      projectId: "gestaobovinosapp",
+      storageBucket: "gestaobovinosapp.firebasestorage.app",
+      messagingSenderId: "23784741029",
+      appId: "1:23784741029:web:120a487f5b39276ca6554c"
+    });
+    const auth = getAuth(app);
+
+    onAuthStateChanged(auth, u => { if (u) go(); });
+
+    function go() { window.location.href = '/dashboard.html'; }
+
+    window.entrar = async () => {
+      const email = document.getElementById('email').value.trim();
+      const pwd   = document.getElementById('pwd').value;
+      if (!email || !pwd) { showErr('Preencha e-mail e senha.'); return; }
+      setLoading(true);
+      hideErr();
+      try {
+        await signInWithEmailAndPassword(auth, email, pwd);
+        go();
+      } catch (e) {
+        showErr(traduzir(e.code));
+        setLoading(false);
+      }
+    };
+
+    window.recuperar = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      if (!email) { showErr('Digite seu e-mail acima para recuperar a senha.'); return; }
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showErr('✅ Link de recuperação enviado! Verifique seu e-mail.');
+        document.getElementById('err').style.background = '#f0fdf4';
+        document.getElementById('err').style.borderColor = '#bbf7d0';
+        document.getElementById('err').style.color = '#15803d';
+      } catch (e) { showErr(traduzir(e.code)); }
+    };
+
+    document.getElementById('pwd').addEventListener('keydown', e => {
+      if (e.key === 'Enter') window.entrar();
+    });
+
+    function setLoading(on) {
+      document.getElementById('btn').disabled = on;
+      document.getElementById('btn-lbl').textContent = on ? 'Entrando…' : 'Entrar no painel';
+      document.getElementById('spin').style.display = on ? 'block' : 'none';
+    }
+    function showErr(msg) {
+      document.getElementById('err-msg').textContent = msg;
+      document.getElementById('err').classList.add('show');
+    }
+    function hideErr() { document.getElementById('err').classList.remove('show'); }
+    function traduzir(code) {
+      const m = {
+        'auth/user-not-found':        'E-mail ou senha inválidos.',
+        'auth/wrong-password':         'E-mail ou senha inválidos.',
+        'auth/invalid-credential':     'E-mail ou senha inválidos.',
+        'auth/too-many-requests':      'Muitas tentativas. Aguarde alguns minutos.',
+        'auth/network-request-failed': 'Sem conexão com a internet.',
+        'auth/invalid-email':          'E-mail inválido.',
+      };
+      return m[code] ?? 'Erro ao entrar. Tente novamente.';
+    }
+  </script>
+</body>
+</html>
