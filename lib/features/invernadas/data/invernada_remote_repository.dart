@@ -25,6 +25,7 @@ class InvernadaRemoteRepository {
       'id': i.id,
       'syncId': i.syncId,
       'descricao': i.descricao,
+      'hectares': i.hectares,
       'urlFoto': i.urlFoto,
       'observacoes': i.observacoes,
       'updatedAt': FieldValue.serverTimestamp(),

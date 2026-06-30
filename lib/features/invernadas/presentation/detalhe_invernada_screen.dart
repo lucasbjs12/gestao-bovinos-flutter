@@ -668,11 +668,24 @@ class _BovinoTile extends StatelessWidget {
               )
             : _buildFoto(bovino.foto),
         title: Text(bovino.nomeAnimal ?? bovino.numeroBrinco),
-        subtitle: Text(
-          [
-            if (bovino.nomeAnimal != null) bovino.numeroBrinco,
-            if (bovino.categoria != null) bovino.categoria!,
-          ].join(' · '),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              [
+                if (bovino.nomeAnimal != null) bovino.numeroBrinco,
+                if (bovino.categoria != null) bovino.categoria!,
+              ].join(' · '),
+            ),
+            if (bovino.pesoAtualKg == null)
+              Text(
+                'Sem peso informado',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+          ],
         ),
         trailing: modoSelecao ? null : const Icon(Icons.chevron_right),
         onTap: onTap,

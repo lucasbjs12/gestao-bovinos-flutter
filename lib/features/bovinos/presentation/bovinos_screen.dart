@@ -93,6 +93,51 @@ class _BovinosScreenState extends State<BovinosScreen> {
     if (mounted) context.read<BovinosProvider>().recarregar();
   }
 
+  void _mostrarOpcoesCadastro() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.add_circle_outline),
+              title: const Text('Cadastro individual'),
+              subtitle: const Text('Adicionar um animal por vez'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _abrirCadastro();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.playlist_add_outlined),
+              title: const Text('Cadastro em lote'),
+              subtitle: const Text('Adicionar vários animais de uma vez'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await Navigator.pushNamed(context, AppRoutes.cadastroLote);
+                if (mounted) context.read<BovinosProvider>().recarregar();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _abrirDetalhe(int bovinoId) async {
     await Navigator.pushNamed(context, AppRoutes.detalheBovino,
         arguments: bovinoId);
@@ -447,7 +492,7 @@ class _BovinosScreenState extends State<BovinosScreen> {
             ? null
             : FloatingActionButton.extended(
                 heroTag: null,
-                onPressed: () => _abrirCadastro(),
+                onPressed: _mostrarOpcoesCadastro,
                 backgroundColor: const Color(0xFF2E7D32),
                 foregroundColor: Colors.white,
                 icon: const Icon(Icons.add_rounded),

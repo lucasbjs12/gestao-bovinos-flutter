@@ -38,9 +38,13 @@ class AppDatabase {
           );
         }
         if (oldVersion < 3) {
-          await db.execute(
-            'ALTER TABLE invernadas ADD COLUMN hectares REAL',
-          );
+          try {
+            await db.execute(
+              'ALTER TABLE invernadas ADD COLUMN hectares REAL',
+            );
+          } catch (_) {
+            // coluna já existe (migração interrompida anteriormente)
+          }
         }
       },
       onCreate: (db, version) async {

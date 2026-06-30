@@ -14,4 +14,6 @@ abstract class AppRoutes {
   static const animaisBaixados = '/animais-baixados';
   static const perfil = '/perfil';
   static const personalizarCadastro = '/personalizar-cadastro';
+  static const painelAdmin = '/painel-admin';
+  static const cadastroLote = '/cadastro-lote';
 }

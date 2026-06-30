@@ -9,6 +9,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/db/app_database.dart';
 import '../../../core/routes/app_routes.dart';
+// import '../../admin/data/assinatura_service.dart';
+// import '../../admin/data/usuario_assinatura.dart';
 import '../../auth/auth_provider.dart';
 import '../../bovinos/data/bovino_local_repository.dart';
 

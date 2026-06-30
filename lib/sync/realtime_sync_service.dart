@@ -87,6 +87,7 @@ class RealtimeSyncService {
       id: null,
       syncId: doc.id,
       descricao: d['descricao'] as String? ?? '',
+      hectares: (d['hectares'] as num?)?.toDouble(),
       urlFoto: d['urlFoto'] as String?,
       observacoes: d['observacoes'] as String?,
     );

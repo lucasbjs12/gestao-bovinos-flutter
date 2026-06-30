@@ -13,7 +13,12 @@ import 'features/auth/presentation/verificacao_email_screen.dart';
 import 'features/bovinos/bovinos_provider.dart';
 import 'features/bovinos/presentation/animais_baixados_screen.dart';
 import 'features/bovinos/presentation/cadastro_bovino_screen.dart';
+import 'features/bovinos/presentation/cadastro_lote_screen.dart';
 import 'features/bovinos/presentation/detalhe_bovino_screen.dart';
+// import 'features/admin/data/assinatura_service.dart';
+// import 'features/admin/data/usuario_assinatura.dart';
+// import 'features/admin/presentation/acesso_bloqueado_screen.dart';
+import 'features/admin/presentation/painel_admin_screen.dart';
 import 'features/bovinos/presentation/personalizar_cadastro_screen.dart';
 import 'features/bovinos/presentation/sem_manejo_screen.dart';
 import 'features/bovinos/presentation/terneiros_indefinidos_screen.dart';
@@ -115,9 +120,19 @@ class GestaoBovinosApp extends StatelessWidget {
                 builder: (_) => const PerfilScreen(),
                 settings: settings,
               );
+            case AppRoutes.cadastroLote:
+              return MaterialPageRoute(
+                builder: (_) => const CadastroLoteScreen(),
+                settings: settings,
+              );
             case AppRoutes.personalizarCadastro:
               return MaterialPageRoute(
                 builder: (_) => const PersonalizarCadastroScreen(),
+                settings: settings,
+              );
+            case AppRoutes.painelAdmin:
+              return MaterialPageRoute(
+                builder: (_) => const PainelAdminScreen(),
                 settings: settings,
               );
             default:

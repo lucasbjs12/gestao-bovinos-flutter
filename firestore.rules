@@ -8,5 +8,13 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Usuário lê/cria seu próprio documento de assinatura
+    match /usuarios/{uid} {
+      allow read, create: if request.auth != null && request.auth.uid == uid;
+      // Apenas admins escrevem em qualquer documento de usuário
+      allow write: if request.auth != null
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+    }
+
   }
 }
