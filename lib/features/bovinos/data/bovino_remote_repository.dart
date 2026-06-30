@@ -28,6 +28,7 @@ class BovinoRemoteRepository {
       'codigoInterno': b.codigoInterno,
       'raca': b.raca,
       'dataNascimento': b.dataNascimento,
+      'dataNascimentoMillis': b.dataNascimentoMillis,
       'pesoAtualKg': b.pesoAtualKg,
       'pelagem': b.pelagem,
       'sexo': b.sexo,

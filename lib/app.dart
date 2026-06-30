@@ -33,6 +33,7 @@ import 'features/invernadas/presentation/detalhe_invernada_screen.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/shell/presentation/main_shell_screen.dart';
 import 'features/shell/shell_provider.dart';
+import 'sync/categoria_progressao_service.dart';
 import 'sync/initial_sync_service.dart';
 import 'sync/realtime_sync_service.dart';
 
@@ -219,6 +220,26 @@ class _AuthGateState extends State<_AuthGate> {
       }
 
       _realtimeSync = RealtimeSyncService()..start(uid: uid, db: db);
+
+      // Progressão de categoria por idade (roda toda vez que o app abre)
+      final promovidos = await CategoriaProgressaoService.executar(uid: uid, db: db);
+      if (mounted && promovidos.isNotEmpty) {
+        context.read<BovinosProvider>().recarregar();
+        context.read<HomeProvider>().carregar(uid);
+
+        final n   = promovidos.length;
+        final msg = n == 1
+            ? '${promovidos.first.brinco}: ${promovidos.first.categoriaAnterior} → ${promovidos.first.categoriaNova}'
+            : '$n animais tiveram categoria atualizada automaticamente';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } catch (_) {
       // Falha no sync inicial (ex.: offline) — tenta de novo na próxima abertura.
     }
