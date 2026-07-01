@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>O app na rotina diária — Gestão de Rebanho</title>
+  <meta name="description" content="Veja como o Gestão de Rebanho funciona no dia a dia do produtor rural: cadastro, controle de animais, invernadas e manejos sanitários." />
+  <link rel="icon" href="img/marca.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --forest:  #04100a;
+      --g900:    #0d2b0f;
+      --g800:    #1a4720;
+      --g700:    #2a6b33;
+      --g600:    #3d8a47;
+      --g500:    #4caf50;
+      --g400:    #6cc870;
+      --g200:    #a8e6ac;
+      --g50:     #e8f5e9;
+      --gold:    #c8a84b;
+      --gold-lt: #e8d08e;
+      --cream:   #faf8f4;
+      --cream2:  #f0ece3;
+      --text:    #18181b;
+      --muted:   #71717a;
+      --border:  #e4e0d8;
+      --white:   #ffffff;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--cream); color: var(--text); overflow-x: hidden; }
+
+    /* ── NAV ──────────────────────────────────────── */
+    #nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 22px 48px;
+      display: flex; align-items: center; justify-content: space-between;
+      transition: all .4s cubic-bezier(.4,0,.2,1);
+    }
+    #nav.solid {
+      background: rgba(4,16,10,.94);
+      backdrop-filter: blur(24px) saturate(1.5);
+      padding: 14px 48px;
+      box-shadow: 0 1px 0 rgba(255,255,255,.06);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo img { width: 38px; height: 38px; border-radius: 10px; }
+    .nav-logo-name { font-size: 15px; font-weight: 700; color: #fff; }
+    .nav-links { display: flex; align-items: center; gap: 36px; }
+    .nav-links a { color: rgba(255,255,255,.6); font-size: 14px; font-weight: 500; text-decoration: none; transition: color .2s; }
+    .nav-links a:hover { color: #fff; }
+    .nav-cta {
+      background: var(--gold) !important; color: var(--forest) !important;
+      font-weight: 700 !important; padding: 10px 22px; border-radius: 100px;
+      transition: all .2s !important;
+    }
+    .nav-cta:hover { background: var(--gold-lt) !important; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(200,168,75,.4); }
+    @media(max-width:768px){ .nav-links { display: none; } #nav { padding: 18px 24px; } #nav.solid { padding: 12px 24px; } }
+
+    /* ── HERO DA PÁGINA ───────────────────────────── */
+    .page-hero {
+      min-height: 52vh;
+      background:
+        radial-gradient(ellipse 60% 80% at 20% 50%, rgba(42,107,51,.28) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 80% 30%, rgba(76,175,80,.12) 0%, transparent 60%),
+        linear-gradient(165deg, #030b04 0%, var(--forest) 40%, #071c09 100%);
+      display: flex; align-items: center; justify-content: center;
+      padding: 140px 48px 90px;
+      position: relative; overflow: hidden; text-align: center;
+    }
+    .hero-grid {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image: radial-gradient(rgba(255,255,255,.04) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    }
+    .page-hero-inner { max-width: 720px; position: relative; }
+    .ph-pill {
+      display: inline-flex; align-items: center; gap: 8px; margin-bottom: 28px;
+      background: rgba(200,168,75,.1); border: 1px solid rgba(200,168,75,.25);
+      color: var(--gold); font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .12em; padding: 7px 18px; border-radius: 100px;
+    }
+    .ph-pill span { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); display: inline-block; animation: blink 1.8s ease-in-out infinite; }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+    .page-hero h1 {
+      font-size: clamp(2.2rem, 5.5vw, 3.8rem); font-weight: 900;
+      color: #fff; letter-spacing: -.03em; line-height: 1.08; margin-bottom: 20px;
+    }
+    .page-hero h1 em { font-style: normal; color: var(--gold); }
+    .page-hero p { color: rgba(255,255,255,.55); font-size: 18px; line-height: 1.75; }
+    @media(max-width:600px){ .page-hero { padding: 120px 24px 70px; } .page-hero p { font-size: 16px; } }
+
+    /* ── SEÇÃO DE TELAS ───────────────────────────── */
+    .screens-sec {
+      padding: 90px 48px 110px;
+      background: var(--cream);
+    }
+    .screens-sec-inner { max-width: 1200px; margin: 0 auto; }
+
+    .screens-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 48px 36px;
+    }
+    @media(max-width:960px){ .screens-grid { grid-template-columns: repeat(2, 1fr); gap: 40px 28px; } }
+    @media(max-width:560px){ .screens-grid { grid-template-columns: 1fr; gap: 48px; } }
+
+    /* Cartão de tela */
+    .sc-card {
+      display: flex; flex-direction: column; align-items: center; gap: 24px;
+    }
+
+    /* Frame de celular */
+    .phone-frame {
+      width: 100%; max-width: 260px;
+      aspect-ratio: 9/19.5;
+      background: #0d1f0f;
+      border-radius: 38px;
+      border: 6px solid #1c3820;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,.06),
+        0 32px 80px rgba(0,0,0,.35),
+        inset 0 1px 0 rgba(255,255,255,.07);
+      overflow: hidden;
+      position: relative;
+    }
+    /* notch */
+    .phone-frame::before {
+      content: '';
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      width: 72px; height: 20px;
+      background: #0d1f0f;
+      border-radius: 0 0 14px 14px;
+      z-index: 2;
+    }
+    /* brilho lateral */
+    .phone-frame::after {
+      content: '';
+      position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(135deg, rgba(255,255,255,.06) 0%, transparent 50%);
+      z-index: 3; border-radius: inherit;
+    }
+    .phone-screen {
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: top;
+      display: block;
+    }
+
+    /* Texto abaixo do frame */
+    .sc-info { text-align: center; }
+    .sc-num {
+      display: inline-block; margin-bottom: 10px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--g800); color: var(--g400);
+      font-size: 12px; font-weight: 700; line-height: 28px; text-align: center;
+    }
+    .sc-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .sc-desc  { font-size: 14px; color: var(--muted); line-height: 1.65; max-width: 230px; margin: 0 auto; }
+
+    /* Reveal animation */
+    .r { opacity: 0; transform: translateY(36px); transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1); }
+    .r.in { opacity: 1; transform: none; }
+
+    /* ── CTA FAIXA ────────────────────────────────── */
+    .app-cta {
+      padding: 80px 48px;
+      text-align: center;
+      background: linear-gradient(160deg, #03090a 0%, #071608 45%, #0a2410 100%);
+      position: relative; overflow: hidden;
+    }
+    .app-cta::before {
+      content: ''; position: absolute;
+      width: 600px; height: 600px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(76,175,80,.09) 0%, transparent 70%);
+      top: 50%; left: 50%; transform: translate(-50%,-50%);
+    }
+    .app-cta-in { max-width: 580px; margin: 0 auto; position: relative; }
+    .app-cta h2 { color: #fff; font-size: clamp(1.8rem,4vw,3rem); font-weight: 900; letter-spacing: -.03em; margin-bottom: 16px; }
+    .app-cta p  { color: rgba(255,255,255,.5); font-size: 17px; line-height: 1.75; margin-bottom: 36px; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--gold); color: var(--forest);
+      font-weight: 700; font-size: 15px; padding: 14px 30px;
+      border-radius: 100px; text-decoration: none;
+      transition: all .2s;
+      box-shadow: 0 8px 28px rgba(200,168,75,.35);
+    }
+    .btn-primary:hover { background: var(--gold-lt); transform: translateY(-2px); box-shadow: 0 14px 40px rgba(200,168,75,.45); }
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1.5px solid rgba(255,255,255,.18); color: rgba(255,255,255,.75);
+      font-weight: 600; font-size: 15px; padding: 14px 30px;
+      border-radius: 100px; text-decoration: none;
+      transition: all .2s;
+    }
+    .btn-ghost:hover { border-color: rgba(255,255,255,.45); color: #fff; }
+    .cta-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── FOOTER ───────────────────────────────────── */
+    footer { background: #020904; color: rgba(255,255,255,.42); padding: 68px 48px 42px; }
+    .ft-in { max-width: 1120px; margin: 0 auto; }
+    .ft-top { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 64px; margin-bottom: 52px; }
+    @media(max-width:680px){ .ft-top { grid-template-columns: 1fr; gap: 36px; } }
+    .ft-brand { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
+    .ft-brand img { width: 38px; height: 38px; border-radius: 10px; }
+    .ft-brand-n { color: #fff; font-size: 15px; font-weight: 700; }
+    .ft-tag { font-size: 13.5px; line-height: 1.75; max-width: 320px; }
+    .ft-col-h { color: rgba(255,255,255,.72); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 18px; }
+    .ft-links { list-style: none; display: flex; flex-direction: column; gap: 11px; }
+    .ft-links a { color: rgba(255,255,255,.38); font-size: 14px; text-decoration: none; transition: color .2s; }
+    .ft-links a:hover { color: rgba(255,255,255,.85); }
+    .ft-bot { border-top: 1px solid rgba(255,255,255,.055); padding-top: 28px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; font-size: 12.5px; }
+    .lgpd { background: rgba(76,175,80,.1); border: 1px solid rgba(76,175,80,.2); color: var(--g400); font-size: 11px; font-weight: 600; padding: 5px 13px; border-radius: 100px; }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ─────────────────────────────────────────── -->
+<nav id="nav">
+  <a href="index.html" class="nav-logo">
+    <img src="https://raw.githubusercontent.com/lucasbjs12/gestao-bovinos-flutter/master/assets/images/marca.jpeg" alt="GR" />
+    <span class="nav-logo-name">Gestão de Rebanho</span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html#features">Funcionalidades</a>
+    <a href="index.html#how">Como funciona</a>
+    <a href="index.html#privacy">Privacidade</a>
+    <a href="dashboard.html" class="nav-cta">Acessar Painel</a>
+  </div>
+</nav>
+
+<!-- ── HERO DA PÁGINA ───────────────────────────────── -->
+<section class="page-hero">
+  <div class="hero-grid"></div>
+  <div class="page-hero-inner">
+    <div class="ph-pill r in"><span></span> Telas reais do aplicativo</div>
+    <h1 class="r in" style="transition-delay:.08s">O app na sua <em>rotina diária</em></h1>
+    <p class="r in" style="transition-delay:.16s">Do cadastro ao manejo sanitário — veja como o Gestão de Rebanho acompanha cada etapa do seu trabalho no campo.</p>
+  </div>
+</section>
+
+<!-- ── GRADE DE TELAS ───────────────────────────────── -->
+<section class="screens-sec">
+  <div class="screens-sec-inner">
+    <div class="screens-grid">
+
+      <!-- 1. Início -->
+      <div class="sc-card r">
+        <div class="phone-frame">
+          <img class="phone-screen" src="img/tela-inicio.jpeg" alt="Tela inicial do app" />
+        </div>
+        <div class="sc-info">
+          <div class="sc-num">1</div>
+          <div class="sc-title">Painel inicial</div>
+          <div class="sc-desc">Resumo completo do rebanho assim que você abre o app — total de animais, distribuição por categoria e acesso rápido a todas as funções.</div>
+        </div>
+      </div>
+
+      <!-- 2. Lista de bovinos -->
+      <div class="sc-card r" style="transition-delay:.1s">
+        <div class="phone-frame">
+          <img class="phone-screen" src="img/tela-bovinos.jpeg" alt="Lista de bovinos" />
+        </div>
+        <div class="sc-info">
+          <div class="sc-num">2</div>
+          <div class="sc-title">Lista de animais</div>
+          <div class="sc-desc">Filtre por categoria, busque pelo brinco ou nome e identifique rapidamente quais animais estão sem peso ou sem manejo registrado.</div>
+        </div>
+      </div>
+
+      <!-- 3. Detalhe do bovino -->
+      <div class="sc-card r" style="transition-delay:.2s">
+        <div class="phone-frame">
+          <img class="phone-screen" src="img/tela-detalhe.jpeg" alt="Detalhe do bovino" />
+        </div>
+        <div class="sc-info">
+          <div class="sc-num">3</div>
+          <div class="sc-title">Ficha do animal</div>
+          <div class="sc-desc">Acesse raça, peso, nascimento, invernada e histórico sanitário de cada animal. Tudo em um único lugar, disponível offline.</div>
+        </div>
+      </div>
+
+      <!-- 4. Invernada -->
+      <div class="sc-card r" style="transition-delay:.05s">
+        <div class="phone-frame">
+          <img class="phone-screen" src="img/tela-invernada.jpeg" alt="Detalhe da invernada" />
+        </div>
+        <div class="sc-info">
+          <div class="sc-num">4</div>
+          <div class="sc-title">Controle de invernadas</div>
+          <div class="sc-desc">Veja quais animais estão em cada pasto, peso total do lote, área em hectares e lotação atual — para decisões mais precisas de manejo.</div>
+        </div>
+      </div>
+
+      <!-- 5. Eventos sanitários -->
+      <div class="sc-card r" style="transition-delay:.15s">
+        <div class="phone-frame">
+          <img class="phone-screen" src="img/tela-evento.jpeg" alt="Registro de evento sanitário" />
+        </div>
+        <div class="sc-info">
+          <div class="sc-num">5</div>
+          <div class="sc-title">Manejos sanitários</div>
+          <div class="sc-desc">Registre vacinações, vermifugações e outros manejos com produto, dosagem e responsável. Associe a um ou vários animais de uma vez.</div>
+        </div>
+      </div>
+
+      <!-- 6. Cadastro em lote -->
+      <div class="sc-card r" style="transition-delay:.25s">
+        <div class="phone-frame">
+          <img class="phone-screen" src="img/tela-lote.jpeg" alt="Cadastro em lote" />
+        </div>
+        <div class="sc-info">
+          <div class="sc-num">6</div>
+          <div class="sc-title">Cadastro em lote</div>
+          <div class="sc-desc">Na hora da entrada de animais, cadastre vários de uma vez. Brinco, categoria, peso e data de nascimento — rápido e sem erros.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ──────────────────────────────────────────── -->
+<section class="app-cta">
+  <div class="app-cta-in">
+    <h2 class="r">Pronto para começar?</h2>
+    <p class="r" style="transition-delay:.1s">Baixe o app e tenha o controle do seu rebanho na palma da mão — funciona mesmo sem internet.</p>
+    <div class="cta-btns r" style="transition-delay:.2s">
+      <a href="index.html" class="btn-primary">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+        Conhecer o app
+      </a>
+      <a href="dashboard.html" class="btn-ghost">
+        Acessar painel web →
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ───────────────────────────────────────── -->
+<footer>
+  <div class="ft-in">
+    <div class="ft-top">
+      <div>
+        <div class="ft-brand">
+          <img src="https://raw.githubusercontent.com/lucasbjs12/gestao-bovinos-flutter/master/assets/images/marca.jpeg" alt="GR" />
+          <span class="ft-brand-n">Gestão de Rebanho</span>
+        </div>
+        <p class="ft-tag">Aplicativo de gestão pecuária desenvolvido para o produtor rural brasileiro. Simples, rápido e seguro — mesmo sem internet.</p>
+      </div>
+      <div>
+        <div class="ft-col-h">Navegação</div>
+        <ul class="ft-links">
+          <li><a href="index.html#features">Funcionalidades</a></li>
+          <li><a href="index.html#how">Como funciona</a></li>
+          <li><a href="app.html">App no dia a dia</a></li>
+          <li><a href="dashboard.html">Painel Web</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="ft-col-h">Legal</div>
+        <ul class="ft-links">
+          <li><a href="index.html#privacy">Política de Privacidade</a></li>
+          <li><a href="index.html#privacy">Termos de Uso</a></li>
+          <li><a href="index.html#privacy">LGPD</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ft-bot">
+      <span>© 2025 Gestão de Rebanho. Todos os direitos reservados.</span>
+      <span class="lgpd">🛡️ Conformidade LGPD</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* Nav scroll */
+const navEl = document.getElementById('nav');
+addEventListener('scroll', () => navEl.classList.toggle('solid', scrollY > 70), { passive: true });
+
+/* Scroll reveal */
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('in');
+      obs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12 });
+document.querySelectorAll('.r').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>
