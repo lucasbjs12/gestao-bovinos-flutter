@@ -291,7 +291,7 @@
     .check-lbl:hover { border-color:var(--g200); background:var(--g50); }
     .check-lbl input[type=checkbox] { width:17px; height:17px; accent-color:var(--g700); cursor:pointer; flex-shrink:0; }
     .check-lbl input:checked + .check-lbl-text { color:var(--g800); }
-    .pdf-selects { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .pdf-selects { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
     .pdf-fld label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; }
     .pdf-sel {
       width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:9px;
@@ -334,6 +334,7 @@
       .content { padding:16px; }
       .topbar { padding:12px 16px; }
       .stat-grid { grid-template-columns:1fr 1fr; }
+      .pdf-selects { grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -373,6 +374,12 @@
           <label>Invernada</label>
           <select class="pdf-sel" id="pdf-inv">
             <option value="">Todas as invernadas</option>
+          </select>
+        </div>
+        <div class="pdf-fld">
+          <label>Categoria</label>
+          <select class="pdf-sel" id="pdf-categoria">
+            <option value="">Todas as categorias</option>
           </select>
         </div>
       </div>
@@ -835,10 +842,17 @@ window.openInvernadaDetail = async k => {
 // ── PDF Modal ────────────────────────────────────────────
 window.openPdfModal = async () => {
   // Populate invernada filter
-  const invs = await loadInvernadas();
+  const [invs, bovs] = await Promise.all([loadInvernadas(), loadBovinos()]);
   const sel  = document.getElementById('pdf-inv');
   sel.innerHTML = '<option value="">Todas as invernadas</option>' +
     invs.map(i => `<option value="${i.id}">${i.descricao}</option>`).join('');
+
+  // Populate categoria filter (dinâmico, a partir das categorias existentes)
+  const cats = [...new Set(bovs.map(b => b.categoria).filter(Boolean))].sort();
+  const selCat = document.getElementById('pdf-categoria');
+  selCat.innerHTML = '<option value="">Todas as categorias</option>' +
+    cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
   document.getElementById('pdf-ov').classList.add('show');
   document.getElementById('pdf-modal').classList.add('show');
 };
@@ -860,6 +874,7 @@ window.gerarPDF = async () => {
 
     const filtStatus = document.getElementById('pdf-status').value;
     const filtInvId  = document.getElementById('pdf-inv').value;
+    const filtCat    = document.getElementById('pdf-categoria').value;
     const inclBov    = document.getElementById('pdf-bovinos').checked;
     const inclInv    = document.getElementById('pdf-invernadas').checked;
     const inclEv     = document.getElementById('pdf-eventos').checked;
@@ -867,6 +882,7 @@ window.gerarPDF = async () => {
     let bovFiltrados = bovinos;
     if (filtStatus) bovFiltrados = bovFiltrados.filter(b => b.status === filtStatus);
     if (filtInvId)  bovFiltrados = bovFiltrados.filter(b => String(b.invernadaId) === filtInvId);
+    if (filtCat)    bovFiltrados = bovFiltrados.filter(b => b.categoria === filtCat);
 
     const fazNome  = document.getElementById('fazenda-nome').textContent;
     const dataHoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
@@ -928,7 +944,7 @@ window.gerarPDF = async () => {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(...G800);
-      doc.text(`Bovinos  (${bovFiltrados.length})`, 14, y);
+      doc.text(`Bovinos${filtCat ? ' — ' + filtCat : ''}  (${bovFiltrados.length})`, 14, y);
 
       doc.autoTable({
         startY: y + 3,

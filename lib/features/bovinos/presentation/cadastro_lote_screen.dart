@@ -368,18 +368,16 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
         appBar: AppBar(title: const Text('Cadastro em lote')),
         body: Column(
           children: [
-            // ── Invernada (seletor compacto) ────────────────────────────
+            // ── Invernada ────────────────────────────────────────────────
             Container(
               color: Theme.of(context).colorScheme.surfaceContainerLow,
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: DropdownButtonFormField<int?>(
                 initialValue: _invernadaId,
-                isDense: true,
                 decoration: const InputDecoration(
                   labelText: 'Invernada (todos os animais)',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.fence_outlined),
-                  isDense: true,
                 ),
                 items: [
                   const DropdownMenuItem(
@@ -397,7 +395,7 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
             // ── Formulário por animal ────────────────────────────────────
             Container(
               color: Theme.of(context).colorScheme.surfaceContainerLow,
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -413,7 +411,6 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
                             decoration: const InputDecoration(
                               labelText: 'Brinco *',
                               border: OutlineInputBorder(),
-                              isDense: true,
                             ),
                             validator: (v) {
                               if (v == null || v.trim().isEmpty) {
@@ -426,34 +423,31 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
                             },
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Expanded(
                           flex: 3,
                           child: DropdownButtonFormField<String>(
                             initialValue: _categoria,
-                            isDense: true,
                             decoration: const InputDecoration(
                               labelText: 'Categoria *',
                               border: OutlineInputBorder(),
-                              isDense: true,
                             ),
                             items: _categorias
                                 .map((c) =>
                                     DropdownMenuItem(value: c, child: Text(c)))
                                 .toList(),
-                            onChanged: (v) =>
-                                setState(() => _categoria = v),
-                            validator: (v) =>
-                                v == null ? 'Selecione' : null,
+                            onChanged: (v) => setState(() => _categoria = v),
+                            validator: (v) => v == null ? 'Selecione' : null,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    // Linha 2: Peso + Nascimento + Foto + Adicionar
+                    const SizedBox(height: 10),
+                    // Linha 2: Peso + Data de nascimento
                     Row(
                       children: [
                         Expanded(
+                          flex: 1,
                           child: TextFormField(
                             controller: _pesoCtrl,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -464,42 +458,49 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
                               labelText: 'Peso (kg)',
                               border: OutlineInputBorder(),
                               suffixText: 'kg',
-                              isDense: true,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          onPressed: _escolherData,
-                          icon: const Icon(Icons.calendar_today_outlined,
-                              size: 16),
-                          label: Text(
-                            _dataNasc == null
-                                ? 'Nasc.'
-                                : '${_dataNasc!.day.toString().padLeft(2, '0')}/'
-                                    '${_dataNasc!.month.toString().padLeft(2, '0')}/'
-                                    '${_dataNasc!.year}',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 10),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: OutlinedButton.icon(
+                            onPressed: _escolherData,
+                            icon: const Icon(Icons.calendar_today_outlined,
+                                size: 18),
+                            label: Text(
+                              _dataNasc == null
+                                  ? 'Data de nascimento'
+                                  : '${_dataNasc!.day.toString().padLeft(2, '0')}/'
+                                      '${_dataNasc!.month.toString().padLeft(2, '0')}/'
+                                      '${_dataNasc!.year}',
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(56),
+                              alignment: Alignment.centerLeft,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    // Linha 3: Foto + Botão adicionar
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                         GestureDetector(
                           onTap: _pickFoto,
                           child: Container(
-                            width: 44,
-                            height: 44,
+                            width: 64,
+                            height: 64,
                             decoration: BoxDecoration(
                               border: Border.all(
+                                width: 1.5,
                                 color: _fotoAtual != null
                                     ? Theme.of(context).colorScheme.primary
                                     : Theme.of(context).colorScheme.outline,
                               ),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(10),
                               image: _fotoAtual != null
                                   ? DecorationImage(
                                       image: FileImage(_fotoAtual!),
@@ -508,32 +509,51 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
                                   : null,
                             ),
                             child: _fotoAtual == null
-                                ? Icon(Icons.camera_alt_outlined,
-                                    size: 20,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant)
+                                ? Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.camera_alt_outlined,
+                                          size: 24,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Foto',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  )
                                 : null,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        FilledButton(
-                          onPressed:
-                              _adicionando ? null : _adicionarAnimal,
-                          style: FilledButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 12),
-                            backgroundColor: const Color(0xFF2E7D32),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: _adicionando ? null : _adicionarAnimal,
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(64),
+                              backgroundColor: const Color(0xFF2E7D32),
+                              textStyle: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w600),
+                            ),
+                            icon: _adicionando
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Icon(Icons.add, size: 22),
+                            label: _adicionando
+                                ? const SizedBox.shrink()
+                                : const Text('Adicionar animal'),
                           ),
-                          child: _adicionando
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Icon(Icons.add, color: Colors.white),
                         ),
                       ],
                     ),
@@ -585,11 +605,12 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
                         final item = _lote[_lote.length - 1 - i];
                         final fotoFile = item.fotoFile;
                         return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 3),
+                          margin: const EdgeInsets.symmetric(vertical: 5),
                           child: ListTile(
-                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 4),
                             leading: CircleAvatar(
-                              radius: 20,
+                              radius: 24,
                               backgroundColor: Theme.of(context)
                                   .colorScheme
                                   .primaryContainer,
@@ -600,7 +621,7 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
                                   ? Text(
                                       '${_lote.length - i}',
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 13,
                                         color: Theme.of(context)
                                             .colorScheme
                                             .onPrimaryContainer,
