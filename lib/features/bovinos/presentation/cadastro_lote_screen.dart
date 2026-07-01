@@ -476,7 +476,7 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
                                       '${_dataNasc!.year}',
                             ),
                             style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(56),
+                              minimumSize: const Size(0, 56),
                               alignment: Alignment.centerLeft,
                             ),
                           ),
@@ -486,7 +486,6 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
                     const SizedBox(height: 10),
                     // Linha 3: Foto + Botão adicionar
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         GestureDetector(
                           onTap: _pickFoto,
@@ -534,25 +533,27 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: FilledButton.icon(
-                            onPressed: _adicionando ? null : _adicionarAnimal,
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size.fromHeight(64),
-                              backgroundColor: const Color(0xFF2E7D32),
-                              textStyle: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w600),
+                          child: SizedBox(
+                            height: 64,
+                            child: FilledButton.icon(
+                              onPressed: _adicionando ? null : _adicionarAnimal,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF2E7D32),
+                                textStyle: const TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w600),
+                              ),
+                              icon: _adicionando
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Icon(Icons.add, size: 22),
+                              label: Text(
+                                _adicionando ? '' : 'Adicionar animal',
+                              ),
                             ),
-                            icon: _adicionando
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white),
-                                  )
-                                : const Icon(Icons.add, size: 22),
-                            label: _adicionando
-                                ? const SizedBox.shrink()
-                                : const Text('Adicionar animal'),
                           ),
                         ),
                       ],
