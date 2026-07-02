@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/db/app_database.dart';
 import '../../../core/routes/app_routes.dart';
@@ -124,6 +125,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
             leading: const Icon(Icons.logout),
             title: const Text('Sair'),
             onTap: _confirmarLogout,
+          ),
+
+          const Divider(),
+
+          _SectionHeader('SOBRE'),
+          ListTile(
+            leading: const Icon(Icons.language_outlined),
+            title: const Text('Visite nosso site'),
+            trailing: const Icon(Icons.open_in_new),
+            onTap: _abrirSite,
           ),
 
           const Divider(),
@@ -293,6 +304,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(erro.isEmpty ? 'Senha alterada com sucesso.' : erro),
     ));
+  }
+
+  Future<void> _abrirSite() async {
+    final uri = Uri.parse('https://gestaobovinosapp.web.app/');
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!mounted || ok) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Não foi possível abrir o site.')),
+    );
   }
 
   Future<void> _verIntroducao() async {

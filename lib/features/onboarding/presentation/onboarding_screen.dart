@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const _kOnboardingKey = 'onboarding_shown_v1';
 
@@ -63,6 +64,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _concluir() async {
     await marcarOnboardingMostrado();
     widget.onConcluir();
+  }
+
+  Future<void> _abrirSite() async {
+    final uri = Uri.parse('https://gestaobovinosapp.web.app/');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -169,6 +175,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                     ),
                   ),
+                  if (ultima) ...[
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _abrirSite,
+                      style: TextButton.styleFrom(foregroundColor: Colors.grey.shade500),
+                      child: const Text('Conheça o site do app'),
+                    ),
+                  ],
                 ],
               ),
             ),
