@@ -128,6 +128,25 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Apenas verifica a senha — não altera nada. Retorna null em sucesso.
+  Future<String?> reautenticar(String senha) async {
+    final user = currentUser;
+    if (user == null || user.email == null) return 'Usuário não encontrado.';
+    try {
+      final cred = EmailAuthProvider.credential(
+        email: user.email!,
+        password: senha,
+      );
+      await user.reauthenticateWithCredential(cred);
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return switch (e.code) {
+        'wrong-password' || 'invalid-credential' => 'Senha incorreta.',
+        _ => 'Erro ao verificar senha: ${e.message}',
+      };
+    }
+  }
+
   /// Re-autentica e deleta a conta. Limpeza de Firestore deve ser feita pelo caller antes.
   /// Retorna null em sucesso, ou mensagem de erro.
   Future<String?> excluirConta(String senha) async {

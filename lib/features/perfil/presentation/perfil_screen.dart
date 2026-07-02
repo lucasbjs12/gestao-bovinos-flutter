@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/db/app_database.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../onboarding/presentation/onboarding_screen.dart';
 // import '../../admin/data/assinatura_service.dart';
 // import '../../admin/data/usuario_assinatura.dart';
 import '../../auth/auth_provider.dart';
@@ -113,6 +115,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
           const Divider(),
 
           _SectionHeader('SESSÃO'),
+          ListTile(
+            leading: const Icon(Icons.play_circle_outline),
+            title: const Text('Ver introdução novamente'),
+            onTap: _verIntroducao,
+          ),
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Sair'),
@@ -288,6 +295,17 @@ class _PerfilScreenState extends State<PerfilScreen> {
     ));
   }
 
+  Future<void> _verIntroducao() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('onboarding_shown_v1');
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OnboardingScreen(onConcluir: () => Navigator.of(context).pop()),
+      ),
+    );
+  }
+
   Future<void> _confirmarLogout() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -312,57 +330,65 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Future<void> _excluirConta() async {
-    final senhaCtrl = TextEditingController();
-    final confirmar = await showDialog<bool>(
+    // Retorna a senha digitada ou null se cancelado.
+    // O controller fica inteiramente dentro do builder para evitar
+    // dispose enquanto a animação de fechamento ainda está rodando.
+    final senha = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Excluir conta'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Esta ação é irreversível. Todos os seus dados serão removidos.',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: senhaCtrl,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Confirme sua senha',
-                border: OutlineInputBorder(),
+      builder: (ctx) {
+        final ctrl = TextEditingController();
+        return AlertDialog(
+          title: const Text('Excluir conta'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Esta ação é irreversível. Todos os seus dados serão removidos.',
               ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: ctrl,
+                obscureText: true,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Confirme sua senha',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error,
+              ),
+              onPressed: () => Navigator.pop(ctx, ctrl.text),
+              child: const Text('Excluir'),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Excluir'),
-          ),
-        ],
-      ),
+        );
+      },
     );
 
-    if (!mounted || confirmar != true) {
-      senhaCtrl.dispose();
+    if (!mounted || senha == null || senha.isEmpty) return;
+
+    final auth = context.read<AuthProvider>();
+    final uid  = auth.currentUser?.uid;
+
+    // 1. Verificar a senha antes de tocar em qualquer dado
+    final erroAuth = await auth.reautenticar(senha);
+    if (!mounted) return;
+    if (erroAuth != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(erroAuth)));
       return;
     }
 
-    final senha = senhaCtrl.text;
-    senhaCtrl.dispose();
-    if (senha.isEmpty || !mounted) return;
-
-    final auth = context.read<AuthProvider>();
-    final uid = auth.currentUser?.uid;
-
+    // 2. Senha correta — agora sim deleta os dados do Firestore
     if (uid != null) {
       try {
         final fs = FirebaseFirestore.instance;
@@ -380,14 +406,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
       } catch (_) {}
     }
 
+    // 3. Deleta a conta de autenticação
     if (!mounted) return;
     final erro = await auth.excluirConta(senha);
 
     if (!mounted) return;
     if (erro != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(erro)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(erro)));
     } else {
       Navigator.of(context).popUntil((r) => r.isFirst);
     }

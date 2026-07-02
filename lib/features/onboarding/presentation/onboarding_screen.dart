@@ -13,6 +13,9 @@ Future<void> marcarOnboardingMostrado() async {
   await prefs.setBool(_kOnboardingKey, true);
 }
 
+const _verde = Color(0xFF2E7D32);
+const _verdeClaro = Color(0xFFE8F5E9);
+
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onConcluir;
   const OnboardingScreen({super.key, required this.onConcluir});
@@ -28,44 +31,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _paginas = [
     _PaginaInfo(
       icon: Icons.pets_rounded,
-      cor: Color(0xFF2E7D32),
-      titulo: 'Bem-vindo ao Gestão Bovinos',
-      descricao:
-          'Gerencie seu rebanho de forma simples e eficiente. '
-          'Cadastre animais, acompanhe manejos e sincronize tudo na nuvem.',
+      titulo: 'Bem-vindo ao\nGestão de Rebanho',
+      descricao: 'Controle do seu rebanho bovino na palma da mão, onde quer que você esteja.',
+    ),
+    _PaginaInfo(
+      icon: Icons.label_rounded,
+      titulo: 'Cadastre seus animais',
+      descricao: 'Brinco, categoria, peso e invernada. Adicione um por um ou em lote no dia do manejo.',
     ),
     _PaginaInfo(
       icon: Icons.grass_rounded,
-      cor: Color(0xFF1565C0),
-      titulo: 'Organize por Invernadas',
-      descricao:
-          'Distribua seus animais em invernadas e mova lotes inteiros '
-          'com a seleção em massa. Toque longo em qualquer animal para selecionar.',
+      titulo: 'Organize em invernadas',
+      descricao: 'Veja qual pasto está lotado, mova lotes inteiros e controle a lotação em kg/ha.',
     ),
     _PaginaInfo(
-      icon: Icons.medical_services_rounded,
-      cor: Color(0xFF6A1B9A),
-      titulo: 'Controle de Manejos',
-      descricao:
-          'Registre vacinas, vermifugações e outros manejos sanitários. '
-          'O app destaca os animais que estão há mais de 90 dias sem manejo.',
-    ),
-    _PaginaInfo(
-      icon: Icons.cloud_sync_rounded,
-      cor: Color(0xFF00838F),
-      titulo: 'Sempre Sincronizado',
-      descricao:
-          'Seus dados ficam salvos localmente e sincronizam automaticamente '
-          'com a nuvem quando houver conexão. Funciona offline também.',
+      icon: Icons.check_circle_rounded,
+      titulo: 'Tudo pronto!',
+      descricao: 'Seus dados ficam salvos localmente e sincronizam na nuvem. Funciona mesmo sem internet.',
+      ultima: true,
     ),
   ];
 
   void _avancar() {
     if (_pagina < _paginas.length - 1) {
-      _ctrl.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+      _ctrl.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     } else {
       _concluir();
     }
@@ -84,70 +73,100 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ultima = _pagina == _paginas.length - 1;
+    final pagina   = _paginas[_pagina];
+    final total    = _paginas.length;
+    final ultima   = pagina.ultima;
+    final progresso = (_pagina + 1) / total;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            Align(
-              alignment: Alignment.topRight,
-              child: TextButton(
-                onPressed: _concluir,
-                child: const Text('Pular'),
+            // ── Barra de progresso + Pular ──────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${_pagina + 1} de $total',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: progresso,
+                            minHeight: 5,
+                            backgroundColor: Colors.grey.shade200,
+                            valueColor: const AlwaysStoppedAnimation<Color>(_verde),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!ultima) ...[
+                    const SizedBox(width: 16),
+                    TextButton(
+                      onPressed: _concluir,
+                      style: TextButton.styleFrom(foregroundColor: Colors.grey.shade500),
+                      child: const Text('Pular'),
+                    ),
+                  ],
+                ],
               ),
             ),
+
+            // ── Páginas ─────────────────────────────────────────────────
             Expanded(
               child: PageView.builder(
                 controller: _ctrl,
                 onPageChanged: (i) => setState(() => _pagina = i),
                 itemCount: _paginas.length,
-                itemBuilder: (_, i) => _PaginaWidget(info: _paginas[i]),
+                itemBuilder: (_, i) => _PaginaWidget(info: _paginas[i], ativa: i == _pagina),
               ),
             ),
+
+            // ── Dots + Botão ─────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 36),
               child: Column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      _paginas.length,
-                      (i) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: i == _pagina ? 20 : 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: i == _pagina
-                              ? _paginas[_pagina].cor
-                              : Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
+                    children: List.generate(total, (i) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: i == _pagina ? 22 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: i == _pagina ? _verde : Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                    ),
+                    )),
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
                       style: FilledButton.styleFrom(
-                        backgroundColor: _paginas[_pagina].cor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: _verde,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                       onPressed: _avancar,
                       child: Text(
-                        ultima ? 'Começar' : 'Próximo',
-                        style: const TextStyle(fontSize: 16),
+                        ultima ? 'Começar agora →' : 'Próximo',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: _concluir,
-                    child: Text(
-                      ultima ? 'Pular introdução' : 'Não mostrar novamente',
-                      style: TextStyle(color: Colors.grey.shade500),
                     ),
                   ),
                 ],
@@ -162,41 +181,71 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
 class _PaginaWidget extends StatelessWidget {
   final _PaginaInfo info;
-  const _PaginaWidget({required this.info});
+  final bool ativa;
+  const _PaginaWidget({required this.info, required this.ativa});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 36),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              color: info.cor.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
+          // Ícone animado
+          AnimatedScale(
+            scale: ativa ? 1.0 : 0.85,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutBack,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _verdeClaro,
+                boxShadow: [
+                  BoxShadow(
+                    color: _verde.withValues(alpha: 0.18),
+                    blurRadius: 40,
+                    spreadRadius: 8,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Icon(info.icon, size: 80, color: _verde),
             ),
-            child: Icon(info.icon, size: 60, color: info.cor),
           ),
-          const SizedBox(height: 40),
-          Text(
-            info.titulo,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: info.cor,
-                ),
+          const SizedBox(height: 48),
+
+          // Título
+          AnimatedOpacity(
+            opacity: ativa ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 350),
+            child: Text(
+              info.titulo,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1A1A1A),
+                height: 1.2,
+              ),
+            ),
           ),
           const SizedBox(height: 16),
-          Text(
-            info.descricao,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey.shade600,
-                  height: 1.5,
-                ),
+
+          // Descrição
+          AnimatedOpacity(
+            opacity: ativa ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 400),
+            child: Text(
+              info.descricao,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+                height: 1.6,
+              ),
+            ),
           ),
         ],
       ),
@@ -206,13 +255,14 @@ class _PaginaWidget extends StatelessWidget {
 
 class _PaginaInfo {
   final IconData icon;
-  final Color cor;
   final String titulo;
   final String descricao;
+  final bool ultima;
+
   const _PaginaInfo({
     required this.icon,
-    required this.cor,
     required this.titulo,
     required this.descricao,
+    this.ultima = false,
   });
 }
