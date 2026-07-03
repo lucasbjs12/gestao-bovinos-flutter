@@ -14,6 +14,7 @@ Future<Database> criarDbTeste() async {
           CREATE TABLE invernadas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             descricao TEXT,
+            hectares REAL,
             urlFoto TEXT,
             observacoes TEXT,
             syncId TEXT
