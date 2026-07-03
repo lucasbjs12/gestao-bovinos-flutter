@@ -3,17 +3,59 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Cada usuário acessa apenas sua própria fazenda
-    match /fazendas/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    function autenticado() {
+      return request.auth != null;
     }
 
-    // Usuário lê/cria seu próprio documento de assinatura
-    match /usuarios/{uid} {
-      allow read, create: if request.auth != null && request.auth.uid == uid;
-      // Apenas admins escrevem em qualquer documento de usuário
-      allow write: if request.auth != null
+    function ehDono(uid) {
+      return autenticado() && request.auth.uid == uid;
+    }
+
+    function ehAdmin() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
         && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Cobrança desativada por enquanto: sempre libera.
+    // Quando ativar a monetização, troque o corpo pela versão comentada
+    // e reative a AcessoBloqueadoScreen no app.dart.
+    function assinaturaLiberada() {
+      return true;
+      // let u = get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+      // return u.isAdmin == true
+      //   || (u.status == 'ativo' && (u.vencimento == null || u.vencimento > request.time));
+    }
+
+    // Cada usuário acessa apenas sua própria fazenda.
+    // delete fica fora da checagem de assinatura para a exclusão de conta
+    // (LGPD) continuar funcionando mesmo com acesso bloqueado.
+    // O match externo cobre o doc fazendas/{userId} em si (a exclusão de
+    // conta chama fazendaRef.delete()); o interno cobre as subcoleções.
+    match /fazendas/{userId} {
+      allow get, create, update: if ehDono(userId) && assinaturaLiberada();
+      allow delete: if ehDono(userId);
+
+      match /{document=**} {
+        allow get, list, create, update: if ehDono(userId) && assinaturaLiberada();
+        allow delete: if ehDono(userId);
+      }
+    }
+
+    match /usuarios/{uid} {
+      // Dono lê o próprio doc; admin lê e lista todos (painel admin).
+      allow get: if ehDono(uid) || ehAdmin();
+      allow list: if ehAdmin();
+
+      // Usuário cria o próprio doc obrigatoriamente sem privilégios —
+      // impede signup direto com isAdmin: true ou status: 'ativo'.
+      allow create: if ehDono(uid)
+        && request.resource.data.isAdmin == false
+        && request.resource.data.status == 'pendente';
+
+      // Só admin altera assinatura (status, plano, vencimento, isAdmin).
+      // O primeiro admin é promovido manualmente pelo console do Firebase.
+      allow update, delete: if ehAdmin();
     }
 
   }

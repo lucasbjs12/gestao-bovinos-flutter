@@ -21,6 +21,9 @@
   "firestore": {
     "rules": "firestore.rules"
   },
+  "functions": {
+    "source": "functions"
+  },
   "hosting": {
     "public": "docs",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
