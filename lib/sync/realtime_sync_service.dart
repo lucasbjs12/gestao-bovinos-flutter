@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../core/sync/sync_refs.dart';
+import '../features/atividades/data/atividade.dart';
+import '../features/atividades/data/atividade_local_repository.dart';
 import '../features/bovinos/data/bovino.dart';
 import '../features/bovinos/data/bovino_local_repository.dart';
 import '../features/eventos_sanitarios/data/evento_sanitario.dart';
@@ -17,6 +19,7 @@ class RealtimeSyncService {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _invernadasSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _bovinosSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _eventosSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _atividadesSub;
 
   void start({required String uid, required Database db}) {
     if (_bovinosSub != null) return; // idempotente
@@ -75,6 +78,24 @@ class RealtimeSyncService {
         } catch (_) {}
       }
     });
+
+    _atividadesSub =
+        fazenda.collection('atividades').snapshots().listen((snap) async {
+      final repo = AtividadeLocalRepository(db);
+      for (final change in snap.docChanges) {
+        if (change.doc.metadata.hasPendingWrites) continue;
+        try {
+          if (change.type == DocumentChangeType.removed) {
+            await repo.excluirPorSyncId(change.doc.id);
+          } else {
+            final d = change.doc.data()!;
+            await repo.inserirOuSubstituirPorSyncId(
+              Atividade.fromMap({...d, 'syncId': change.doc.id, 'id': null}),
+            );
+          }
+        } catch (_) {}
+      }
+    });
   }
 
   void stop() {
@@ -84,6 +105,8 @@ class RealtimeSyncService {
     _bovinosSub = null;
     _eventosSub?.cancel();
     _eventosSub = null;
+    _atividadesSub?.cancel();
+    _atividadesSub = null;
   }
 
   static Invernada _invernadaFromDoc(

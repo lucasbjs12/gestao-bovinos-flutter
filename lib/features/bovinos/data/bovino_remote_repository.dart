@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/db/app_database.dart';
 import '../../../core/sync/sync_refs.dart';
 import '../../../core/sync/sync_status_service.dart';
+import '../../atividades/atividade_service.dart';
 import 'bovino.dart';
 
 /// Espelha cada operação no Cloud Firestore (fire-and-forget / local-first).
@@ -20,7 +21,9 @@ class BovinoRemoteRepository {
   CollectionReference<Map<String, dynamic>> get _col =>
       _db.collection('fazendas').doc(uid).collection('bovinos');
 
-  Future<void> salvar(Bovino b) async {
+  /// [registrarAtividade] = false em regravações internas (resync, efeitos
+  /// colaterais de outras operações) para não poluir o diário.
+  Future<void> salvar(Bovino b, {bool registrarAtividade = true}) async {
     // Referências viajam como syncId (global); os ids locais continuam no doc
     // apenas para compatibilidade com versões antigas do app.
     final db = await AppDatabase.instance.instanceFor(uid);
@@ -54,10 +57,25 @@ class BovinoRemoteRepository {
       'updatedAt': FieldValue.serverTimestamp(),
     });
     _sync.notificarEscrita();
+
+    if (registrarAtividade) {
+      await AtividadeService.registrar(
+        uid: uid,
+        sync: _sync,
+        acao: 'bovino_salvo',
+        descricao: 'Salvou o bovino ${b.numeroBrinco}',
+      );
+    }
   }
 
   void excluir(String syncId) {
     _col.doc(syncId).delete();
     _sync.notificarEscrita();
+    AtividadeService.registrar(
+      uid: uid,
+      sync: _sync,
+      acao: 'bovino_excluido',
+      descricao: 'Excluiu um bovino do rebanho',
+    );
   }
 }

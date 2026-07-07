@@ -24,7 +24,7 @@ class ResyncRefsService {
 
     final bovinoRepo = BovinoRemoteRepository(uid: uid, sync: sync);
     for (final row in await db.query('bovinos')) {
-      await bovinoRepo.salvar(Bovino.fromMap(row));
+      await bovinoRepo.salvar(Bovino.fromMap(row), registrarAtividade: false);
     }
 
     final eventoRepo = EventoSanitarioRemoteRepository(uid: uid, sync: sync);
@@ -52,6 +52,7 @@ class ResyncRefsService {
       await eventoRepo.salvar(
         evento,
         vinculos.map((v) => v['bovinoId'] as int).toList(),
+        registrarAtividade: false,
       );
     }
 

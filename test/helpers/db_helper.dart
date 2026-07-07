@@ -68,6 +68,17 @@ Future<Database> criarDbTeste() async {
           )
         ''');
         await db.execute('''
+          CREATE TABLE atividades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            syncId TEXT,
+            autorUid TEXT,
+            autorNome TEXT,
+            acao TEXT,
+            descricao TEXT,
+            dataMillis INTEGER
+          )
+        ''');
+        await db.execute('''
           CREATE TABLE baixas_bovinos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             bovinoId INTEGER NOT NULL,

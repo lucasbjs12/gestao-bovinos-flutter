@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/db/app_database.dart';
 import '../../../core/sync/sync_refs.dart';
 import '../../../core/sync/sync_status_service.dart';
+import '../../atividades/atividade_service.dart';
 import '../../bovinos/data/bovino.dart';
 import '../../bovinos/data/bovino_remote_repository.dart';
 import 'invernada.dart';
@@ -33,6 +34,12 @@ class InvernadaRemoteRepository {
       'updatedAt': FieldValue.serverTimestamp(),
     });
     _sync.notificarEscrita();
+    AtividadeService.registrar(
+      uid: uid,
+      sync: _sync,
+      acao: 'invernada_salva',
+      descricao: 'Salvou a invernada ${i.descricao}',
+    );
   }
 
   /// Exclui a invernada e re-salva os bovinos afetados com invernadaId = null.
@@ -40,9 +47,17 @@ class InvernadaRemoteRepository {
     _col.doc(syncId).delete();
     final bovinoRepo = BovinoRemoteRepository(uid: uid, sync: _sync);
     for (final b in bovinosAfetados) {
-      bovinoRepo.salvar(b);
+      // efeito colateral da exclusão — não polui o diário
+      bovinoRepo.salvar(b, registrarAtividade: false);
     }
     _sync.notificarEscrita();
+    AtividadeService.registrar(
+      uid: uid,
+      sync: _sync,
+      acao: 'invernada_excluida',
+      descricao: 'Excluiu uma invernada '
+          '(${bovinosAfetados.length} animais ficaram sem invernada)',
+    );
   }
 
   Future<void> salvarMovimentacao(MovimentacaoInvernada m, int localId) async {
@@ -67,5 +82,30 @@ class InvernadaRemoteRepository {
       'createdAt': FieldValue.serverTimestamp(),
     });
     _sync.notificarEscrita();
+
+    final brincoRows = await db.query(
+      'bovinos',
+      columns: ['numeroBrinco'],
+      where: 'id = ?',
+      whereArgs: [m.bovinoId],
+    );
+    final destinoRows = await db.query(
+      'invernadas',
+      columns: ['descricao'],
+      where: 'id = ?',
+      whereArgs: [m.novaInvernadaId],
+    );
+    final brinco = brincoRows.isEmpty
+        ? 'um bovino'
+        : 'o brinco ${brincoRows.first['numeroBrinco']}';
+    final destino = destinoRows.isEmpty
+        ? 'sem invernada'
+        : '${destinoRows.first['descricao']}';
+    await AtividadeService.registrar(
+      uid: uid,
+      sync: _sync,
+      acao: 'movimentacao',
+      descricao: 'Moveu $brinco para $destino',
+    );
   }
 }

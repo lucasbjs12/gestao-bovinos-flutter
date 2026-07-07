@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/db/app_database.dart';
 import '../../../core/sync/sync_refs.dart';
 import '../../../core/sync/sync_status_service.dart';
+import '../../atividades/atividade_service.dart';
 import 'evento_sanitario.dart';
 
 class EventoSanitarioRemoteRepository {
@@ -16,7 +17,12 @@ class EventoSanitarioRemoteRepository {
   CollectionReference<Map<String, dynamic>> get _col =>
       _db.collection('fazendas').doc(uid).collection('eventos_sanitarios');
 
-  Future<void> salvar(EventoSanitario evento, List<int> bovinoIds) async {
+  /// [registrarAtividade] = false em regravações internas (resync).
+  Future<void> salvar(
+    EventoSanitario evento,
+    List<int> bovinoIds, {
+    bool registrarAtividade = true,
+  }) async {
     // Referências viajam como syncId (global); os ids locais continuam no doc
     // apenas para compatibilidade com versões antigas do app.
     final db = await AppDatabase.instance.instanceFor(uid);
@@ -41,10 +47,27 @@ class EventoSanitarioRemoteRepository {
       'updatedAt': FieldValue.serverTimestamp(),
     });
     _sync.notificarEscrita();
+
+    if (registrarAtividade) {
+      final n = bovinoIds.length;
+      await AtividadeService.registrar(
+        uid: uid,
+        sync: _sync,
+        acao: 'evento_salvo',
+        descricao: 'Salvou o evento ${evento.tipo} '
+            '($n ${n == 1 ? 'animal' : 'animais'})',
+      );
+    }
   }
 
   void excluir(String syncId) {
     _col.doc(syncId).delete();
     _sync.notificarEscrita();
+    AtividadeService.registrar(
+      uid: uid,
+      sync: _sync,
+      acao: 'evento_excluido',
+      descricao: 'Excluiu um evento sanitário',
+    );
   }
 }

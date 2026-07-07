@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../core/sync/sync_refs.dart';
+import '../features/atividades/data/atividade.dart';
+import '../features/atividades/data/atividade_local_repository.dart';
 import '../features/bovinos/data/bovino.dart';
 import '../features/bovinos/data/bovino_local_repository.dart';
 import '../features/eventos_sanitarios/data/evento_sanitario.dart';
@@ -28,16 +30,18 @@ class InitialSyncService {
     final fazendaRef =
         FirebaseFirestore.instance.collection('fazendas').doc(uid);
 
-    // Busca paralela das 3 coleções
+    // Busca paralela das 4 coleções
     final results = await Future.wait([
       fazendaRef.collection('invernadas').get(const GetOptions(source: Source.server)),
       fazendaRef.collection('bovinos').get(const GetOptions(source: Source.server)),
       fazendaRef.collection('eventos_sanitarios').get(const GetOptions(source: Source.server)),
+      fazendaRef.collection('atividades').get(const GetOptions(source: Source.server)),
     ]);
 
     final invernadasSnap = results[0];
     final bovinosSnap    = results[1];
     final eventosSnap    = results[2];
+    final atividadesSnap = results[3];
 
     // 1 — Invernadas (FK base para bovinos)
     final invRepo = InvernadaLocalRepository(db);
@@ -134,6 +138,15 @@ class InitialSyncService {
         observacoes: d['observacoes'] as String?,
       );
       await evRepo.inserirOuSubstituirPorSyncId(evento, bovinosLocais);
+    }
+
+    // 4 — Diário de atividades
+    final atRepo = AtividadeLocalRepository(db);
+    for (final doc in atividadesSnap.docs) {
+      if (doc.metadata.hasPendingWrites) continue;
+      await atRepo.inserirOuSubstituirPorSyncId(
+        Atividade.fromMap({...doc.data(), 'syncId': doc.id, 'id': null}),
+      );
     }
 
     final prefs = await SharedPreferences.getInstance();

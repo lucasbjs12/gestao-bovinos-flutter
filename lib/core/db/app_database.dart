@@ -30,7 +30,7 @@ class AppDatabase {
 
     return openDatabase(
       dbPath,
-      version: 3,
+      version: 4,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute(
@@ -45,6 +45,9 @@ class AppDatabase {
           } catch (_) {
             // coluna já existe (migração interrompida anteriormente)
           }
+        }
+        if (oldVersion < 4) {
+          await _criarTabelaAtividades(db);
         }
       },
       onCreate: (db, version) async {
@@ -153,7 +156,26 @@ class AppDatabase {
           )
         ''');
         await db.execute('CREATE INDEX idx_leitura_rfid_bovinoId ON leitura_rfid(bovinoId)');
+
+        await _criarTabelaAtividades(db);
       },
+    );
+  }
+
+  static Future<void> _criarTabelaAtividades(Database db) async {
+    await db.execute('''
+      CREATE TABLE atividades (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        syncId TEXT,
+        autorUid TEXT,
+        autorNome TEXT,
+        acao TEXT,
+        descricao TEXT,
+        dataMillis INTEGER
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_atividades_dataMillis ON atividades(dataMillis)',
     );
   }
 

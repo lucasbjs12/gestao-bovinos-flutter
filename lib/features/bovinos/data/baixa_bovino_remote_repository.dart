@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/sync/sync_status_service.dart';
+import '../../atividades/atividade_service.dart';
 import 'baixa_bovino.dart';
 import 'bovino.dart';
 
@@ -35,6 +36,12 @@ class BaixaBovinoRemoteRepository {
       if (baixa.observacoes != null) 'observacoes': baixa.observacoes,
     });
     _syncSvc.notificarEscrita();
+    AtividadeService.registrar(
+      uid: uid,
+      sync: _syncSvc,
+      acao: 'baixa',
+      descricao: 'Deu baixa no bovino ${bovino.numeroBrinco} — ${baixa.motivo}',
+    );
   }
 
   void reativar(Bovino bovino) {
@@ -44,11 +51,23 @@ class BaixaBovinoRemoteRepository {
     );
     _baixaCol.doc(bovino.id.toString()).delete();
     _syncSvc.notificarEscrita();
+    AtividadeService.registrar(
+      uid: uid,
+      sync: _syncSvc,
+      acao: 'reativacao',
+      descricao: 'Reativou o bovino ${bovino.numeroBrinco}',
+    );
   }
 
   void excluirPermanente({required String syncId, required int bovinoId}) {
     _bovinoCol.doc(syncId).delete();
     _baixaCol.doc(bovinoId.toString()).delete();
     _syncSvc.notificarEscrita();
+    AtividadeService.registrar(
+      uid: uid,
+      sync: _syncSvc,
+      acao: 'bovino_excluido',
+      descricao: 'Excluiu permanentemente um bovino baixado',
+    );
   }
 }
