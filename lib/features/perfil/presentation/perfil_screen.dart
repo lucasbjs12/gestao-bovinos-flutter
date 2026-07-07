@@ -136,6 +136,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
             trailing: const Icon(Icons.open_in_new),
             onTap: _abrirSite,
           ),
+          ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: const Text('Política de privacidade'),
+            trailing: const Icon(Icons.open_in_new),
+            onTap: _abrirPoliticaPrivacidade,
+          ),
 
           const Divider(),
 
@@ -312,6 +318,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
     if (!mounted || ok) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Não foi possível abrir o site.')),
+    );
+  }
+
+  Future<void> _abrirPoliticaPrivacidade() async {
+    final uri = Uri.parse('https://gestaobovinosapp.web.app/privacidade.html');
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!mounted || ok) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Não foi possível abrir a página.')),
     );
   }
 
