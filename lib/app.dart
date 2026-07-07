@@ -36,6 +36,7 @@ import 'features/shell/shell_provider.dart';
 import 'sync/categoria_progressao_service.dart';
 import 'sync/initial_sync_service.dart';
 import 'sync/realtime_sync_service.dart';
+import 'sync/resync_refs_service.dart';
 
 class GestaoBovinosApp extends StatelessWidget {
   const GestaoBovinosApp({super.key});
@@ -220,6 +221,13 @@ class _AuthGateState extends State<_AuthGate> {
       }
 
       _realtimeSync = RealtimeSyncService()..start(uid: uid, db: db);
+
+      // Uma vez por aparelho: regrava docs na nuvem com referências por syncId
+      await ResyncRefsService.executarUmaVez(
+        uid: uid,
+        db: db,
+        sync: syncService,
+      );
 
       // Progressão de categoria por idade (roda toda vez que o app abre)
       final promovidos = await CategoriaProgressaoService.executar(uid: uid, db: db);

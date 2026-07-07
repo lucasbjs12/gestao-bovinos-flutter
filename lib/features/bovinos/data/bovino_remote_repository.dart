@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/db/app_database.dart';
+import '../../../core/sync/sync_refs.dart';
 import '../../../core/sync/sync_status_service.dart';
 import 'bovino.dart';
 
@@ -18,7 +20,14 @@ class BovinoRemoteRepository {
   CollectionReference<Map<String, dynamic>> get _col =>
       _db.collection('fazendas').doc(uid).collection('bovinos');
 
-  void salvar(Bovino b) {
+  Future<void> salvar(Bovino b) async {
+    // Referências viajam como syncId (global); os ids locais continuam no doc
+    // apenas para compatibilidade com versões antigas do app.
+    final db = await AppDatabase.instance.instanceFor(uid);
+    final invernadaSyncId =
+        await SyncRefs.syncIdPorId(db, 'invernadas', b.invernadaId);
+    final maeSyncId = await SyncRefs.syncIdPorId(db, 'bovinos', b.idMae);
+
     _col.doc(b.syncId).set({
       'id': b.id,
       'syncId': b.syncId,
@@ -38,7 +47,9 @@ class BovinoRemoteRepository {
       'observacoes': b.observacoes,
       'foto': b.foto,
       'invernadaId': b.invernadaId,
+      'invernadaSyncId': invernadaSyncId,
       'idMae': b.idMae,
+      'maeSyncId': maeSyncId,
       'estaDeCria': b.estaDeCria == 1,
       'updatedAt': FieldValue.serverTimestamp(),
     });

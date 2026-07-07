@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/db/app_database.dart';
+import '../../../core/sync/sync_refs.dart';
 import '../../../core/sync/sync_status_service.dart';
 import '../../bovinos/data/bovino.dart';
 import '../../bovinos/data/bovino_remote_repository.dart';
@@ -43,13 +45,23 @@ class InvernadaRemoteRepository {
     _sync.notificarEscrita();
   }
 
-  void salvarMovimentacao(MovimentacaoInvernada m, int localId) {
+  Future<void> salvarMovimentacao(MovimentacaoInvernada m, int localId) async {
+    final db = await AppDatabase.instance.instanceFor(uid);
+    final bovinoSyncId = await SyncRefs.syncIdPorId(db, 'bovinos', m.bovinoId);
+    final anteriorSyncId =
+        await SyncRefs.syncIdPorId(db, 'invernadas', m.invernadaAnteriorId);
+    final novaSyncId =
+        await SyncRefs.syncIdPorId(db, 'invernadas', m.novaInvernadaId);
+
     _colMov.doc(localId.toString()).set({
       'id': localId,
       'bovinoId': m.bovinoId,
+      'bovinoSyncId': bovinoSyncId,
       'data': m.data,
       'invernadaAnteriorId': m.invernadaAnteriorId,
+      'invernadaAnteriorSyncId': anteriorSyncId,
       'novaInvernadaId': m.novaInvernadaId,
+      'novaInvernadaSyncId': novaSyncId,
       'responsavel': m.responsavel,
       'observacoes': m.observacoes,
       'createdAt': FieldValue.serverTimestamp(),

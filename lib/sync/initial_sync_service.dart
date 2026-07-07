@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../core/sync/sync_refs.dart';
 import '../features/bovinos/data/bovino.dart';
 import '../features/bovinos/data/bovino_local_repository.dart';
 import '../features/eventos_sanitarios/data/evento_sanitario.dart';
@@ -47,11 +48,20 @@ class InitialSyncService {
 
     // 2 — Bovinos (2 passes para resolver idMae auto-referencial)
     final bovRepo = BovinoLocalRepository(db);
-    final pendingMae = <String, int>{};
+    final pendingMaeSyncId = <String, String>{};
+    final pendingMaeLegacy = <String, int>{};
 
     for (final doc in bovinosSnap.docs) {
       if (doc.metadata.hasPendingWrites) continue;
       final d = doc.data();
+      // invernadaSyncId (novo) tem prioridade sobre o id legado do aparelho
+      // de origem; as invernadas já foram inseridas no passo 1.
+      final invernadaId = await SyncRefs.idRemotoResolvido(
+        db,
+        'invernadas',
+        syncId: d['invernadaSyncId'] as String?,
+        legacyId: _intOuNull(d['invernadaId']),
+      );
       final b = Bovino(
         id: null,
         syncId: doc.id,
@@ -70,15 +80,26 @@ class InitialSyncService {
         origem: d['origem'] as String?,
         observacoes: d['observacoes'] as String?,
         foto: d['foto'] as String?,
-        invernadaId: _intOuNull(d['invernadaId']),
+        invernadaId: invernadaId,
         idMae: null,
         estaDeCria: (d['estaDeCria'] == true) ? 1 : 0,
       );
       await bovRepo.inserirOuSubstituirPorSyncId(b);
-      final idMae = _intOuNull(d['idMae']);
-      if (idMae != null) pendingMae[doc.id] = idMae;
+      final maeSyncId = d['maeSyncId'] as String?;
+      if (maeSyncId != null && maeSyncId.isNotEmpty) {
+        pendingMaeSyncId[doc.id] = maeSyncId;
+      } else {
+        final idMae = _intOuNull(d['idMae']);
+        if (idMae != null) pendingMaeLegacy[doc.id] = idMae;
+      }
     }
-    for (final entry in pendingMae.entries) {
+    for (final entry in pendingMaeSyncId.entries) {
+      final maeLocalId = await SyncRefs.idPorSyncId(db, 'bovinos', entry.value);
+      if (maeLocalId != null) {
+        await bovRepo.atualizarIdMaePorSyncId(entry.key, maeLocalId);
+      }
+    }
+    for (final entry in pendingMaeLegacy.entries) {
       await bovRepo.atualizarIdMaePorSyncId(entry.key, entry.value);
     }
 
@@ -87,22 +108,26 @@ class InitialSyncService {
     for (final doc in eventosSnap.docs) {
       if (doc.metadata.hasPendingWrites) continue;
       final d = doc.data();
-      final bovinoIds = _listaIntOuVazia(d['bovinoIds']);
-      // bovinoIds do Firestore são IDs locais do dispositivo de origem; precisamos
-      // resolver para IDs locais do dispositivo atual via syncId dos bovinos.
-      // Por simplicidade na sync inicial, armazenamos apenas os IDs que já existam.
-      final bovinosLocais = <int>[];
-      for (final bid in bovinoIds) {
-        final rows = await db.query('bovinos', columns: ['id'], where: 'id = ?', whereArgs: [bid]);
-        if (rows.isNotEmpty) bovinosLocais.add(rows.first['id'] as int);
-      }
+      // bovinoSyncIds (novo) resolve para os ids locais deste aparelho;
+      // docs antigos caem no fallback por bovinoIds legados que existam.
+      final bovinosLocais = await SyncRefs.idsDeBovinosRemotos(
+        db,
+        syncIds: _listaStringOuVazia(d['bovinoSyncIds']),
+        legacyIds: _listaIntOuVazia(d['bovinoIds']),
+      );
+      final invernadaId = await SyncRefs.idRemotoResolvido(
+        db,
+        'invernadas',
+        syncId: d['invernadaSyncId'] as String?,
+        legacyId: _intOuNull(d['invernadaId']),
+      );
       final evento = EventoSanitario(
         id: null,
         syncId: doc.id,
         tipo: d['tipo'] as String? ?? 'Outros',
         dataEvento: d['dataEvento'] as String?,
         dataEventoMillis: _intOuNull(d['dataEventoMillis']),
-        invernadaId: _intOuNull(d['invernadaId']),
+        invernadaId: invernadaId,
         produtoUtilizado: d['produtoUtilizado'] as String?,
         dosagem: d['dosagem'] as String?,
         responsavel: d['responsavel'] as String?,
@@ -146,6 +171,12 @@ class InitialSyncService {
   static List<int> _listaIntOuVazia(dynamic v) {
     if (v == null) return [];
     if (v is List) return v.map(_intOuNull).whereType<int>().toList();
+    return [];
+  }
+
+  static List<String> _listaStringOuVazia(dynamic v) {
+    if (v == null) return [];
+    if (v is List) return v.whereType<String>().toList();
     return [];
   }
 }

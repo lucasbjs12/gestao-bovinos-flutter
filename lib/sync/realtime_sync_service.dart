@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../core/sync/sync_refs.dart';
 import '../features/bovinos/data/bovino.dart';
 import '../features/bovinos/data/bovino_local_repository.dart';
 import '../features/eventos_sanitarios/data/evento_sanitario.dart';
@@ -45,7 +46,9 @@ class RealtimeSyncService {
           if (change.type == DocumentChangeType.removed) {
             await repo.excluirPorSyncId(change.doc.id);
           } else {
-            await repo.inserirOuSubstituirPorSyncId(_bovinoFromDoc(change.doc));
+            await repo.inserirOuSubstituirPorSyncId(
+              await _bovinoFromDoc(db, change.doc),
+            );
           }
         } catch (_) {}
       }
@@ -61,8 +64,12 @@ class RealtimeSyncService {
             await repo.excluirPorSyncId(change.doc.id);
           } else {
             final d = change.doc.data()!;
-            final bovinoIds = _listaIntOuVazia(d['bovinoIds']);
-            final evento = _eventoFromDoc(change.doc);
+            final bovinoIds = await SyncRefs.idsDeBovinosRemotos(
+              db,
+              syncIds: _listaStringOuVazia(d['bovinoSyncIds']),
+              legacyIds: _listaIntOuVazia(d['bovinoIds']),
+            );
+            final evento = await _eventoFromDoc(db, change.doc);
             await repo.inserirOuSubstituirPorSyncId(evento, bovinoIds);
           }
         } catch (_) {}
@@ -93,10 +100,23 @@ class RealtimeSyncService {
     );
   }
 
-  static Bovino _bovinoFromDoc(
+  static Future<Bovino> _bovinoFromDoc(
+    Database db,
     DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
+  ) async {
     final d = doc.data()!;
+    final invernadaId = await SyncRefs.idRemotoResolvido(
+      db,
+      'invernadas',
+      syncId: d['invernadaSyncId'] as String?,
+      legacyId: _intOuNull(d['invernadaId']),
+    );
+    final idMae = await SyncRefs.idRemotoResolvido(
+      db,
+      'bovinos',
+      syncId: d['maeSyncId'] as String?,
+      legacyId: _intOuNull(d['idMae']),
+    );
     return Bovino(
       id: null,
       syncId: doc.id,
@@ -115,23 +135,30 @@ class RealtimeSyncService {
       origem: d['origem'] as String?,
       observacoes: d['observacoes'] as String?,
       foto: d['foto'] as String?,
-      invernadaId: _intOuNull(d['invernadaId']),
-      idMae: _intOuNull(d['idMae']),
+      invernadaId: invernadaId,
+      idMae: idMae,
       estaDeCria: (d['estaDeCria'] == true) ? 1 : 0,
     );
   }
 
-  static EventoSanitario _eventoFromDoc(
+  static Future<EventoSanitario> _eventoFromDoc(
+    Database db,
     DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
+  ) async {
     final d = doc.data()!;
+    final invernadaId = await SyncRefs.idRemotoResolvido(
+      db,
+      'invernadas',
+      syncId: d['invernadaSyncId'] as String?,
+      legacyId: _intOuNull(d['invernadaId']),
+    );
     return EventoSanitario(
       id: null,
       syncId: doc.id,
       tipo: d['tipo'] as String? ?? 'Outros',
       dataEvento: d['dataEvento'] as String?,
       dataEventoMillis: _intOuNull(d['dataEventoMillis']),
-      invernadaId: _intOuNull(d['invernadaId']),
+      invernadaId: invernadaId,
       produtoUtilizado: d['produtoUtilizado'] as String?,
       dosagem: d['dosagem'] as String?,
       responsavel: d['responsavel'] as String?,
@@ -156,6 +183,12 @@ class RealtimeSyncService {
   static List<int> _listaIntOuVazia(dynamic v) {
     if (v == null) return [];
     if (v is List) return v.map(_intOuNull).whereType<int>().toList();
+    return [];
+  }
+
+  static List<String> _listaStringOuVazia(dynamic v) {
+    if (v == null) return [];
+    if (v is List) return v.whereType<String>().toList();
     return [];
   }
 }
