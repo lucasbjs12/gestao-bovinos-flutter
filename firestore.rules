@@ -79,7 +79,45 @@ service cloud.firestore {
       match /membros/{membroUid} {
         allow create, update: if ehDonoDaFazenda(fazendaId)
           && request.resource.data.papel in ['dono', 'capataz'];
+
+        // Auto-ingresso: o convidado cria o próprio doc de membro como
+        // capataz quando apresenta um convite válido (não usado, não
+        // expirado) que aponta para esta fazenda.
+        allow create: if autenticado()
+          && request.auth.uid == membroUid
+          && request.resource.data.papel == 'capataz'
+          && conviteValidoPara(fazendaId, request.resource.data.conviteCodigo);
       }
+    }
+
+    function conviteValidoPara(fazendaId, codigo) {
+      let ref = /databases/$(database)/documents/convites/$(codigo);
+      return codigo is string
+        && exists(ref)
+        && get(ref).data.fazendaId == fazendaId
+        && get(ref).data.papel == 'capataz'
+        && get(ref).data.usado == false
+        && get(ref).data.expiraEm > request.time;
+    }
+
+    // Convites de nível superior: o convidado precisa ler pelo código antes
+    // de pertencer à fazenda. O código (doc id) é o segredo.
+    match /convites/{codigo} {
+      allow get: if autenticado();
+
+      // Só o dono da fazenda cria convites de capataz para a própria fazenda.
+      allow create: if autenticado()
+        && request.auth.uid == request.resource.data.fazendaId
+        && request.resource.data.papel == 'capataz'
+        && request.resource.data.usado == false;
+
+      // Dono cancela/gerencia; ou o convidado marca como usado ao aceitar.
+      allow update, delete: if autenticado()
+        && request.auth.uid == resource.data.fazendaId;
+      allow update: if autenticado()
+        && resource.data.usado == false
+        && request.resource.data.usado == true
+        && request.resource.data.usadoPor == request.auth.uid;
     }
 
     match /usuarios/{uid} {

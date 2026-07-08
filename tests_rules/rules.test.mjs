@@ -118,6 +118,76 @@ describe('atividades — diário imutável', () => {
   });
 });
 
+describe('convites — geração e ingresso', () => {
+  const CODIGO = 'BOV-TESTE';
+  const futuro = new Date(Date.now() + 48 * 3600 * 1000);
+  const passado = new Date(Date.now() - 3600 * 1000);
+
+  async function semRules(fn) {
+    await env.withSecurityRulesDisabled(async (ctx) => fn(ctx.firestore()));
+  }
+
+  it('dono cria convite para a própria fazenda', async () => {
+    await assertSucceeds(setDoc(doc(como('dono1'), `convites/${CODIGO}`), {
+      fazendaId: 'dono1', papel: 'capataz', usado: false,
+      expiraEm: futuro,
+    }));
+  });
+
+  it('ninguém cria convite para a fazenda de outro', async () => {
+    await assertFails(setDoc(doc(como('intruso1'), `convites/OUTRO`), {
+      fazendaId: 'dono1', papel: 'capataz', usado: false, expiraEm: futuro,
+    }));
+  });
+
+  it('convidado entra com convite válido e vira capataz', async () => {
+    await semRules((db) => setDoc(doc(db, `convites/${CODIGO}`), {
+      fazendaId: 'dono1', papel: 'capataz', usado: false, expiraEm: futuro,
+    }));
+    // cria o próprio doc de membro apresentando o convite
+    await assertSucceeds(setDoc(doc(como('novato1'), `fazendas/dono1/membros/novato1`), {
+      papel: 'capataz', conviteCodigo: CODIGO, nome: 'Novato',
+    }));
+    // marca o convite como usado em nome próprio
+    await assertSucceeds(updateDoc(doc(como('novato1'), `convites/${CODIGO}`), {
+      usado: true, usadoPor: 'novato1',
+    }));
+  });
+
+  it('convite expirado não deixa entrar', async () => {
+    await semRules((db) => setDoc(doc(db, `convites/EXPIRADO`), {
+      fazendaId: 'dono1', papel: 'capataz', usado: false, expiraEm: passado,
+    }));
+    await assertFails(setDoc(doc(como('novato2'), `fazendas/dono1/membros/novato2`), {
+      papel: 'capataz', conviteCodigo: 'EXPIRADO',
+    }));
+  });
+
+  it('convite já usado não deixa entrar', async () => {
+    await semRules((db) => setDoc(doc(db, `convites/USADO`), {
+      fazendaId: 'dono1', papel: 'capataz', usado: true, expiraEm: futuro,
+    }));
+    await assertFails(setDoc(doc(como('novato3'), `fazendas/dono1/membros/novato3`), {
+      papel: 'capataz', conviteCodigo: 'USADO',
+    }));
+  });
+
+  it('sem convite não dá para se autoinserir como membro', async () => {
+    await assertFails(setDoc(doc(como('novato4'), `fazendas/dono1/membros/novato4`), {
+      papel: 'capataz', conviteCodigo: 'NAO-EXISTE',
+    }));
+  });
+
+  it('convite não permite entrar como dono', async () => {
+    await semRules((db) => setDoc(doc(db, `convites/COMODONO`), {
+      fazendaId: 'dono1', papel: 'capataz', usado: false, expiraEm: futuro,
+    }));
+    await assertFails(setDoc(doc(como('novato5'), `fazendas/dono1/membros/novato5`), {
+      papel: 'dono', conviteCodigo: 'COMODONO',
+    }));
+  });
+});
+
 describe('usuarios — regressão da assinatura', () => {
   it('usuário cria o próprio doc apenas sem privilégios', async () => {
     const db = como('novo1');

@@ -24,6 +24,7 @@ import 'features/bovinos/presentation/sem_manejo_screen.dart';
 import 'features/bovinos/presentation/terneiros_indefinidos_screen.dart';
 import 'features/atividades/presentation/diario_atividades_screen.dart';
 import 'features/fazenda/data/membro_service.dart';
+import 'features/fazenda/presentation/membros_screen.dart';
 import 'features/perfil/presentation/perfil_screen.dart';
 import 'features/home/home_provider.dart';
 import 'features/eventos_sanitarios/eventos_sanitarios_provider.dart';
@@ -142,6 +143,11 @@ class GestaoBovinosApp extends StatelessWidget {
             case AppRoutes.diarioAtividades:
               return MaterialPageRoute(
                 builder: (_) => const DiarioAtividadesScreen(),
+                settings: settings,
+              );
+            case AppRoutes.membros:
+              return MaterialPageRoute(
+                builder: (_) => const MembrosScreen(),
                 settings: settings,
               );
             default:

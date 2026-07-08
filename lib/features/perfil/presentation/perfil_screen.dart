@@ -119,6 +119,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.pushNamed(context, AppRoutes.diarioAtividades),
           ),
+          ListTile(
+            leading: const Icon(Icons.group_outlined),
+            title: const Text('Membros da fazenda'),
+            subtitle: const Text('Convide um capataz e gerencie o acesso'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.membros),
+          ),
 
           const Divider(),
 

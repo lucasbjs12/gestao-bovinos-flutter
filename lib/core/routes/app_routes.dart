@@ -17,4 +17,5 @@ abstract class AppRoutes {
   static const painelAdmin = '/painel-admin';
   static const cadastroLote = '/cadastro-lote';
   static const diarioAtividades = '/diario-atividades';
+  static const membros = '/membros';
 }
