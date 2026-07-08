@@ -23,6 +23,7 @@ import 'features/bovinos/presentation/personalizar_cadastro_screen.dart';
 import 'features/bovinos/presentation/sem_manejo_screen.dart';
 import 'features/bovinos/presentation/terneiros_indefinidos_screen.dart';
 import 'features/atividades/presentation/diario_atividades_screen.dart';
+import 'features/fazenda/data/membro_service.dart';
 import 'features/perfil/presentation/perfil_screen.dart';
 import 'features/home/home_provider.dart';
 import 'features/eventos_sanitarios/eventos_sanitarios_provider.dart';
@@ -227,6 +228,9 @@ class _AuthGateState extends State<_AuthGate> {
       }
 
       _realtimeSync = RealtimeSyncService()..start(uid: uid, db: db);
+
+      // Multi-usuário: garante o doc de membro do dono (papel 'dono')
+      MembroService.garantirDono(uid);
 
       // Uma vez por aparelho: regrava docs na nuvem com referências por syncId
       await ResyncRefsService.executarUmaVez(

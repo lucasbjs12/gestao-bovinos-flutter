@@ -27,18 +27,58 @@ service cloud.firestore {
       //   || (u.status == 'ativo' && (u.vencimento == null || u.vencimento > request.time));
     }
 
-    // Cada usuário acessa apenas sua própria fazenda.
-    // delete fica fora da checagem de assinatura para a exclusão de conta
-    // (LGPD) continuar funcionando mesmo com acesso bloqueado.
-    // O match externo cobre o doc fazendas/{userId} em si (a exclusão de
-    // conta chama fazendaRef.delete()); o interno cobre as subcoleções.
-    match /fazendas/{userId} {
-      allow get, create, update: if ehDono(userId) && assinaturaLiberada();
-      allow delete: if ehDono(userId);
+    // ── Multi-usuário por fazenda ─────────────────────────────────────────
+    // O dono é reconhecido pela construção fazendaId == uid (compatível com
+    // o app atual, mesmo sem doc de membro). Capataz vira membro via doc em
+    // fazendas/{fazendaId}/membros/{uid}, criado pelo fluxo de convite.
 
-      match /{document=**} {
-        allow get, list, create, update: if ehDono(userId) && assinaturaLiberada();
-        allow delete: if ehDono(userId);
+    function ehDonoDaFazenda(fazendaId) {
+      return autenticado() && request.auth.uid == fazendaId;
+    }
+
+    function ehMembro(fazendaId) {
+      return autenticado() && (
+        request.auth.uid == fazendaId
+        || exists(/databases/$(database)/documents/fazendas/$(fazendaId)/membros/$(request.auth.uid))
+      );
+    }
+
+    match /fazendas/{fazendaId} {
+      // Doc da fazenda em si: membro lê; só o dono escreve.
+      // delete fica fora da checagem de assinatura para a exclusão de conta
+      // (LGPD) continuar funcionando mesmo com acesso bloqueado.
+      allow get: if ehMembro(fazendaId) && assinaturaLiberada();
+      allow create, update: if ehDonoDaFazenda(fazendaId) && assinaturaLiberada();
+      allow delete: if ehDonoDaFazenda(fazendaId);
+
+      // Coleções operacionais: qualquer membro lê e cria/edita; excluir é
+      // ação de dono (baixas, exclusão de animais/invernadas e LGPD).
+      // membros e atividades ficam FORA da lista de escrita — as regras
+      // específicas abaixo valem para elas (em rules, permissões se somam).
+      match /{colecao}/{docId} {
+        allow get, list: if ehMembro(fazendaId) && assinaturaLiberada();
+        allow create, update: if colecao in [
+            'bovinos', 'invernadas', 'eventos_sanitarios',
+            'movimentacoes', 'baixas_bovinos',
+          ]
+          && ehMembro(fazendaId) && assinaturaLiberada();
+        allow delete: if ehDonoDaFazenda(fazendaId);
+      }
+
+      // Diário de atividades: membro registra em nome próprio; ninguém
+      // edita (auditoria imutável); delete só via regra de dono acima (LGPD).
+      match /atividades/{atividadeId} {
+        allow create: if ehMembro(fazendaId)
+          && assinaturaLiberada()
+          && request.resource.data.autorUid == request.auth.uid;
+        allow update: if false;
+      }
+
+      // Membros: só o dono gerencia; papel restrito aos valores conhecidos.
+      // Ninguém (nem capataz) escala o próprio papel.
+      match /membros/{membroUid} {
+        allow create, update: if ehDonoDaFazenda(fazendaId)
+          && request.resource.data.papel in ['dono', 'capataz'];
       }
     }
 

@@ -437,7 +437,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         final fazendaRef = fs.collection('fazendas').doc(uid);
         for (final col in [
           'bovinos', 'invernadas', 'eventos_sanitarios',
-          'baixas_bovinos', 'movimentacoes',
+          'baixas_bovinos', 'movimentacoes', 'atividades', 'membros',
         ]) {
           final snap = await fazendaRef.collection(col).get();
           for (final doc in snap.docs) {
