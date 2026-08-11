@@ -3,16 +3,14 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// Endereco do backend proprio (Node/Express + PostgreSQL), hospedado no
-/// Render.
+/// Render sob dominio proprio.
 ///
 /// Nao existe um padrao de config no projeto ainda (sem .env, sem
-/// --dart-define) -- por enquanto e uma constante simples. Quando
-/// `api.gestaobovinos.com.br` estiver com o DNS propagado, troque
-/// `_producao` para usar o dominio proprio em vez do `.onrender.com`.
+/// --dart-define) -- por enquanto e uma constante simples.
 class BackendConfig {
   BackendConfig._();
 
-  static const _producao = 'https://gestao-bovinos-flutter.onrender.com/api/v1';
+  static const _producao = 'https://api.gestaobovinos.com.br/api/v1';
 
   /// Base da API, sem barra no final.
   ///
