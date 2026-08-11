@@ -168,6 +168,11 @@ class EventoSanitarioLocalRepository {
   Future<void> excluirPorSyncId(String syncId) =>
       _db.delete('eventos_sanitarios', where: 'syncId = ?', whereArgs: [syncId]);
 
+  Future<Set<String>> listarTodosSyncIds() async {
+    final rows = await _db.query('eventos_sanitarios', columns: ['syncId']);
+    return rows.map((r) => r['syncId'] as String).toSet();
+  }
+
   Future<void> _inserirVinculos(
     Transaction txn,
     int eventoId,

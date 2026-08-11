@@ -7,7 +7,10 @@ import 'core/routes/app_routes.dart';
 import 'core/sync/sync_status_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/auth_provider.dart';
+import 'features/auth/presentation/cadastro_convidado_screen.dart';
 import 'features/auth/presentation/cadastro_fazenda_screen.dart';
+import 'features/auth/presentation/convidado_entrar_screen.dart';
+import 'features/auth/presentation/escolha_cadastro_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/verificacao_email_screen.dart';
 import 'features/bovinos/bovinos_provider.dart';
@@ -23,7 +26,7 @@ import 'features/bovinos/presentation/personalizar_cadastro_screen.dart';
 import 'features/bovinos/presentation/sem_manejo_screen.dart';
 import 'features/bovinos/presentation/terneiros_indefinidos_screen.dart';
 import 'features/atividades/presentation/diario_atividades_screen.dart';
-import 'features/fazenda/data/membro_service.dart';
+import 'features/fazenda/presentation/fazenda_ativa_screen.dart';
 import 'features/fazenda/presentation/membros_screen.dart';
 import 'features/perfil/presentation/perfil_screen.dart';
 import 'features/home/home_provider.dart';
@@ -37,9 +40,7 @@ import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/shell/presentation/main_shell_screen.dart';
 import 'features/shell/shell_provider.dart';
 import 'sync/categoria_progressao_service.dart';
-import 'sync/initial_sync_service.dart';
-import 'sync/realtime_sync_service.dart';
-import 'sync/resync_refs_service.dart';
+import 'sync/polling_sync_service.dart';
 
 class GestaoBovinosApp extends StatelessWidget {
   const GestaoBovinosApp({super.key});
@@ -70,9 +71,19 @@ class GestaoBovinosApp extends StatelessWidget {
         home: const _AuthGate(),
         onGenerateRoute: (settings) {
           switch (settings.name) {
+            case AppRoutes.escolhaCadastro:
+              return MaterialPageRoute(
+                builder: (_) => const EscolhaCadastroScreen(),
+                settings: settings,
+              );
             case AppRoutes.cadastroFazenda:
               return MaterialPageRoute(
                 builder: (_) => const CadastroFazendaScreen(),
+                settings: settings,
+              );
+            case AppRoutes.cadastroConvidado:
+              return MaterialPageRoute(
+                builder: (_) => const CadastroConvidadoScreen(),
                 settings: settings,
               );
             case AppRoutes.cadastroBovino:
@@ -150,6 +161,11 @@ class GestaoBovinosApp extends StatelessWidget {
                 builder: (_) => const MembrosScreen(),
                 settings: settings,
               );
+            case AppRoutes.fazendaAtiva:
+              return MaterialPageRoute(
+                builder: (_) => const FazendaAtivaScreen(),
+                settings: settings,
+              );
             default:
               return null;
           }
@@ -167,13 +183,13 @@ class _AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<_AuthGate> {
-  String? _syncUid;
-  RealtimeSyncService? _realtimeSync;
+  String? _syncFazendaId;
+  PollingSyncService? _pollingSync;
   bool? _onboardingMostrado;
 
   @override
   void dispose() {
-    _realtimeSync?.stop();
+    _pollingSync?.stop();
     super.dispose();
   }
 
@@ -185,20 +201,25 @@ class _AuthGateState extends State<_AuthGate> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final uid = auth.currentUser?.uid;
+    final fazendaId = auth.fazendaId;
 
-    if (auth.status == AuthStatus.authenticated && uid != null && uid != _syncUid) {
-      _syncUid = uid;
+    // Dispara ao logar E ao trocar de fazenda (fazendaId muda).
+    if (auth.status == AuthStatus.authenticated &&
+        fazendaId != null &&
+        fazendaId != _syncFazendaId) {
+      _syncFazendaId = fazendaId;
+      _pollingSync?.stop();
+      _pollingSync = null;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          _iniciarSync(uid);
+          _iniciarSync(fazendaId);
           if (_onboardingMostrado == null) _verificarOnboarding();
         }
       });
-    } else if (auth.status != AuthStatus.authenticated && _syncUid != null) {
-      _syncUid = null;
-      _realtimeSync?.stop();
-      _realtimeSync = null;
+    } else if (auth.status != AuthStatus.authenticated && _syncFazendaId != null) {
+      _syncFazendaId = null;
+      _pollingSync?.stop();
+      _pollingSync = null;
       _onboardingMostrado = null;
     }
 
@@ -208,48 +229,54 @@ class _AuthGateState extends State<_AuthGate> {
         ),
       AuthStatus.unauthenticated => const LoginScreen(),
       AuthStatus.unverified => const VerificacaoEmailScreen(),
-      AuthStatus.authenticated => _onboardingMostrado == false
-          ? OnboardingScreen(
-              onConcluir: () => setState(() => _onboardingMostrado = true),
-            )
-          : const MainShellScreen(),
+      AuthStatus.authenticated => _telaAutenticado(auth),
     };
   }
 
-  Future<void> _iniciarSync(String uid) async {
+  Widget _telaAutenticado(AuthProvider auth) {
+    // Convidado sem fazenda: sistema bloqueado até inserir um código válido.
+    if (auth.precisaEntrarEmFazenda) {
+      return const ConvidadoEntrarScreen();
+    }
+    // Onboarding é sobre "a sua fazenda" — só para produtor.
+    if (!auth.ehConvidado && _onboardingMostrado == false) {
+      return OnboardingScreen(
+        onConcluir: () => setState(() => _onboardingMostrado = true),
+      );
+    }
+    return const MainShellScreen();
+  }
+
+  Future<void> _iniciarSync(String fazendaId) async {
     final syncService = context.read<SyncStatusService>();
     syncService.iniciar();
+    // Assim que a conexão voltar, tenta esvaziar a fila de pendências na
+    // hora em vez de esperar o próximo ciclo do polling (até 45s).
+    syncService.aoReconectar = () => _pollingSync?.sincronizarAgora();
 
     try {
-      final db = await AppDatabase.instance.instanceFor(uid);
+      final db = await AppDatabase.instance.instanceFor(fazendaId);
 
-      if (!await InitialSyncService.jaSincronizou(uid)) {
-        await InitialSyncService.sincronizar(uid: uid, db: db);
-        if (mounted) {
-          context.read<BovinosProvider>().recarregar();
-          context.read<InvernadasProvider>().carregar(uid);
-          context.read<EventosSanitariosProvider>().carregar(uid);
-          context.read<HomeProvider>().carregar(uid);
-        }
+      // A primeira rodada do polling já é a sync inicial -- espera ela
+      // terminar antes de carregar os providers, senão a tela abre vazia.
+      _pollingSync = PollingSyncService();
+      await _pollingSync!.start(uid: fazendaId, db: db, sync: syncService);
+
+      if (mounted) {
+        // carregar(fazendaId) — não recarregar() — para não reusar o uid
+        // anterior (que reabriria o banco da fazenda errada).
+        context.read<BovinosProvider>().carregar(fazendaId);
+        context.read<InvernadasProvider>().carregar(fazendaId);
+        context.read<EventosSanitariosProvider>().carregar(fazendaId);
+        context.read<HomeProvider>().carregar(fazendaId);
       }
 
-      _realtimeSync = RealtimeSyncService()..start(uid: uid, db: db);
-
-      // Multi-usuário: garante o doc de membro do dono (papel 'dono')
-      MembroService.garantirDono(uid);
-
-      // Uma vez por aparelho: regrava docs na nuvem com referências por syncId
-      await ResyncRefsService.executarUmaVez(
-        uid: uid,
-        db: db,
-        sync: syncService,
-      );
-
       // Progressão de categoria por idade (roda toda vez que o app abre)
-      final promovidos = await CategoriaProgressaoService.executar(uid: uid, db: db);
+      final promovidos =
+          await CategoriaProgressaoService.executar(uid: fazendaId, db: db);
       if (mounted && promovidos.isNotEmpty) {
         context.read<BovinosProvider>().recarregar();
-        context.read<HomeProvider>().carregar(uid);
+        context.read<HomeProvider>().carregar(fazendaId);
 
         final n   = promovidos.length;
         final msg = n == 1

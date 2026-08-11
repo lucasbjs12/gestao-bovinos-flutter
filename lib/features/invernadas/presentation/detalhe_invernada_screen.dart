@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../core/db/app_database.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/sync/sync_status_service.dart';
+import '../../atividades/atividade_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../bovinos/data/bovino.dart';
 import '../../bovinos/data/bovino_remote_repository.dart';
@@ -108,8 +109,16 @@ class _DetalheInvernadaScreenState extends State<DetalheInvernadaScreen> {
 
     final remoto = BovinoRemoteRepository(uid: _uid!, sync: syncSvc);
     for (final b in atualizados) {
-      remoto.salvar(b);
+      remoto.salvar(b, registrarAtividade: false);
     }
+    final destino = resultado.invernada?.descricao ?? 'Sem invernada';
+    final n = atualizados.length;
+    AtividadeService.registrar(
+      uid: _uid!,
+      sync: syncSvc,
+      acao: 'bovino_movido',
+      descricao: 'Moveu $n animal${n > 1 ? 'is' : ''} para $destino',
+    );
 
     invernadasProvider.recarregar();
     if (mounted) await _carregar();
@@ -156,8 +165,16 @@ class _DetalheInvernadaScreenState extends State<DetalheInvernadaScreen> {
 
     final remoto = BovinoRemoteRepository(uid: _uid!, sync: syncSvc);
     for (final b in atualizados) {
-      remoto.salvar(b);
+      remoto.salvar(b, registrarAtividade: false);
     }
+    final origem = _invernada?.descricao ?? 'invernada';
+    final n = atualizados.length;
+    AtividadeService.registrar(
+      uid: _uid!,
+      sync: syncSvc,
+      acao: 'bovino_movido',
+      descricao: 'Removeu $n animal${n > 1 ? 'is' : ''} de $origem',
+    );
 
     invernadasProvider.recarregar();
     if (mounted) await _carregar();
@@ -177,7 +194,7 @@ class _DetalheInvernadaScreenState extends State<DetalheInvernadaScreen> {
   }
 
   Future<void> _carregar() async {
-    _uid = context.read<AuthProvider>().currentUser?.uid;
+    _uid = context.read<AuthProvider>().fazendaId;
     final id = ModalRoute.of(context)?.settings.arguments as int?;
     if (id == null || _uid == null) {
       setState(() => _carregando = false);
@@ -344,11 +361,12 @@ class _DetalheInvernadaScreenState extends State<DetalheInvernadaScreen> {
                     tooltip: 'Editar',
                     onPressed: _editar,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    tooltip: 'Excluir',
-                    onPressed: _confirmarExclusao,
-                  ),
+                  if (context.watch<AuthProvider>().souDono)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      tooltip: 'Excluir',
+                      onPressed: _confirmarExclusao,
+                    ),
                 ],
               ),
         bottomNavigationBar: _modoSelecao

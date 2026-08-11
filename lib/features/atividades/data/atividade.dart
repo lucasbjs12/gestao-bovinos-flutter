@@ -3,7 +3,7 @@ import 'package:uuid/uuid.dart';
 const _uuid = Uuid();
 
 /// Registro imutável do diário de atividades: quem fez o quê e quando.
-/// Base da auditoria do multi-usuário (dono acompanha o trabalho do capataz).
+/// Base da auditoria do multi-usuário (dono acompanha o trabalho do convidado).
 class Atividade {
   final int? id;
   final String syncId;

@@ -68,7 +68,7 @@ class _CadastroEventoScreenState extends State<CadastroEventoScreen> {
     _buscaCtrl.addListener(() =>
         setState(() => _termoBusca = _buscaCtrl.text));
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _uid = context.read<AuthProvider>().currentUser?.uid;
+      _uid = context.read<AuthProvider>().fazendaId;
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is int) {
         _eventoId = args;

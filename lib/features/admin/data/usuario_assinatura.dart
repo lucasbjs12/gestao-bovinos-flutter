@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 enum StatusAssinatura { pendente, ativo, bloqueado, vencido }
 
 class UsuarioAssinatura {
@@ -41,32 +39,23 @@ class UsuarioAssinatura {
     return vencimento!.difference(DateTime.now()).inDays;
   }
 
-  factory UsuarioAssinatura.fromMap(String uid, Map<String, dynamic> m) {
-    final statusStr = m['status'] as String? ?? 'pendente';
+  /// Formato do backend próprio (`GET /admin/usuarios`): `statusAssinatura`
+  /// em vez de `status`, `criadoEm`/`vencimento` como string ISO.
+  factory UsuarioAssinatura.fromBackend(Map<String, dynamic> m) {
+    final statusStr = m['statusAssinatura'] as String? ?? 'pendente';
     final status = StatusAssinatura.values.firstWhere(
       (s) => s.name == statusStr,
       orElse: () => StatusAssinatura.pendente,
     );
-    final venc = m['vencimento'];
     return UsuarioAssinatura(
-      uid: uid,
+      uid: m['id'] as String,
       nome: m['nome'] as String? ?? '',
       email: m['email'] as String? ?? '',
       isAdmin: m['isAdmin'] as bool? ?? false,
       status: status,
       plano: m['plano'] as String?,
-      vencimento: venc is Timestamp ? venc.toDate() : null,
-      criadoEm: (m['criadoEm'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      vencimento: m['vencimento'] != null ? DateTime.tryParse(m['vencimento'] as String) : null,
+      criadoEm: DateTime.tryParse(m['criadoEm'] as String? ?? '') ?? DateTime.now(),
     );
   }
-
-  Map<String, dynamic> toMap() => {
-        'nome': nome,
-        'email': email,
-        'isAdmin': isAdmin,
-        'status': status.name,
-        'plano': plano,
-        'vencimento': vencimento != null ? Timestamp.fromDate(vencimento!) : null,
-        'criadoEm': Timestamp.fromDate(criadoEm),
-      };
 }

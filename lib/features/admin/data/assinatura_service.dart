@@ -1,41 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
+import '../../../core/api/api_client.dart';
 import 'usuario_assinatura.dart';
 
 class AssinaturaService {
-  static final _fs = FirebaseFirestore.instance;
-  static CollectionReference<Map<String, dynamic>> get _col =>
-      _fs.collection('usuarios');
-
-  static Future<UsuarioAssinatura?> buscarUsuario(String uid) async {
-    final doc = await _col.doc(uid).get();
-    if (!doc.exists || doc.data() == null) return null;
-    return UsuarioAssinatura.fromMap(uid, doc.data()!);
-  }
-
-  static Future<UsuarioAssinatura> garantirUsuario(User user) async {
-    final doc = await _col.doc(user.uid).get();
-    if (doc.exists && doc.data() != null) {
-      return UsuarioAssinatura.fromMap(user.uid, doc.data()!);
-    }
-    final novo = UsuarioAssinatura(
-      uid: user.uid,
-      nome: user.displayName ?? '',
-      email: user.email ?? '',
-      isAdmin: false,
-      status: StatusAssinatura.pendente,
-      criadoEm: DateTime.now(),
-    );
-    await _col.doc(user.uid).set(novo.toMap());
-    return novo;
-  }
+  static final _api = ApiClient();
 
   static Future<List<UsuarioAssinatura>> listarTodos() async {
-    final snap = await _col.orderBy('criadoEm', descending: true).get();
-    return snap.docs
-        .map((d) => UsuarioAssinatura.fromMap(d.id, d.data()))
-        .toList();
+    final dados = await _api.get('/admin/usuarios?pageSize=100') as Map<String, dynamic>;
+    final itens = (dados['itens'] as List).cast<Map<String, dynamic>>();
+    return itens.map(UsuarioAssinatura.fromBackend).toList();
   }
 
   static Future<void> ativar({
@@ -43,15 +15,17 @@ class AssinaturaService {
     required String plano,
     required DateTime vencimento,
   }) =>
-      _col.doc(uid).update({
-        'status': StatusAssinatura.ativo.name,
+      _api.patch('/admin/usuarios/$uid/assinatura', corpo: {
+        'statusAssinatura': 'ativo',
         'plano': plano,
-        'vencimento': Timestamp.fromDate(vencimento),
+        'vencimento': vencimento.toIso8601String().substring(0, 10),
       });
 
-  static Future<void> bloquear(String uid) =>
-      _col.doc(uid).update({'status': StatusAssinatura.bloqueado.name});
+  static Future<void> bloquear(String uid) => _api.patch(
+        '/admin/usuarios/$uid/assinatura',
+        corpo: {'statusAssinatura': 'bloqueado'},
+      );
 
-  static Future<void> toggleAdmin(String uid, bool isAdmin) =>
-      _col.doc(uid).update({'isAdmin': isAdmin});
+  // Sem endpoint no backend para promover/remover admin ainda (só via
+  // acesso direto ao banco) -- ver painel_admin_screen.dart, botão removido.
 }

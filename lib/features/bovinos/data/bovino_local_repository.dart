@@ -156,6 +156,14 @@ class BovinoLocalRepository {
   Future<void> excluirPorSyncId(String syncId) =>
       _db.delete('bovinos', where: 'syncId = ?', whereArgs: [syncId]);
 
+  /// Todos os syncIds já salvos localmente -- usado pelo sync por polling
+  /// pra descobrir o que sumiu do servidor (excluído em outro aparelho) e
+  /// precisa ser removido daqui também.
+  Future<Set<String>> listarTodosSyncIds() async {
+    final rows = await _db.query('bovinos', columns: ['syncId']);
+    return rows.map((r) => r['syncId'] as String).toSet();
+  }
+
   Future<void> atualizarIdMaePorSyncId(String syncId, int idMae) =>
       _db.rawUpdate(
         'UPDATE bovinos SET idMae = ? WHERE syncId = ?',

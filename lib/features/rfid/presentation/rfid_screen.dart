@@ -25,7 +25,7 @@ class _RfidScreenState extends State<RfidScreen> {
   }
 
   Future<void> _carregar() async {
-    final uid = context.read<AuthProvider>().currentUser?.uid;
+    final uid = context.read<AuthProvider>().fazendaId;
     if (uid == null) {
       setState(() => _carregando = false);
       return;

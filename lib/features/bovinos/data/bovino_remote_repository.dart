@@ -1,81 +1,134 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
+import '../../../core/api/api_client.dart';
+import '../../../core/api/api_exception.dart';
 import '../../../core/db/app_database.dart';
+import '../../../core/sync/outbox.dart';
 import '../../../core/sync/sync_refs.dart';
 import '../../../core/sync/sync_status_service.dart';
-import '../../atividades/atividade_service.dart';
+import '../../../core/utils/data_iso.dart';
 import 'bovino.dart';
 
-/// Espelha cada operação no Cloud Firestore (fire-and-forget / local-first).
-///
-/// O SDK do Firestore enfileira as escritas offline e as envia quando a
-/// conexão volta — sem nenhuma lógica adicional aqui.
+/// Espelha cada operação no backend próprio (fire-and-forget -- quem chama
+/// não espera nem trata o resultado). Se a chamada falhar (tipicamente por
+/// falta de conexão), a operação vai pro [Outbox] em vez de se perder --
+/// o [PollingSyncService] tenta reenviar a cada rodada e assim que a
+/// conexão volta.
 class BovinoRemoteRepository {
   final String uid;
   final SyncStatusService _sync;
-  final FirebaseFirestore _db;
+  final ApiClient _api;
 
-  BovinoRemoteRepository({required this.uid, required this._sync})
-      : _db = FirebaseFirestore.instance;
+  // O campo é privado (_sync) mas o parâmetro precisa ficar público (sync)
+  // pra quem chama de fora do arquivo, então não dá pra usar `this._sync`.
+  BovinoRemoteRepository({
+    required this.uid,
+    required SyncStatusService sync,
+    ApiClient? apiClient,
+  }) : _sync = sync, // ignore: prefer_initializing_formals
+       _api = apiClient ?? ApiClient();
 
-  CollectionReference<Map<String, dynamic>> get _col =>
-      _db.collection('fazendas').doc(uid).collection('bovinos');
+  String get _base => '/fazendas/$uid/bovinos';
 
-  /// [registrarAtividade] = false em regravações internas (resync, efeitos
-  /// colaterais de outras operações) para não poluir o diário.
+  /// [registrarAtividade] não tem efeito no backend (todo write já loga no
+  /// diário do lado do servidor) -- mantido só para não quebrar quem chama.
   Future<void> salvar(Bovino b, {bool registrarAtividade = true}) async {
-    // Referências viajam como syncId (global); os ids locais continuam no doc
-    // apenas para compatibilidade com versões antigas do app.
     final db = await AppDatabase.instance.instanceFor(uid);
-    final invernadaSyncId =
-        await SyncRefs.syncIdPorId(db, 'invernadas', b.invernadaId);
+    final invernadaSyncId = await SyncRefs.syncIdPorId(db, 'invernadas', b.invernadaId);
     final maeSyncId = await SyncRefs.syncIdPorId(db, 'bovinos', b.idMae);
 
-    _col.doc(b.syncId).set({
-      'id': b.id,
-      'syncId': b.syncId,
-      'numeroBrinco': b.numeroBrinco,
+    final corpo = {
       'nomeAnimal': b.nomeAnimal,
       'codigoEpc': b.codigoEpc,
       'codigoInterno': b.codigoInterno,
+      'numeroBrinco': b.numeroBrinco,
       'raca': b.raca,
-      'dataNascimento': b.dataNascimento,
-      'dataNascimentoMillis': b.dataNascimentoMillis,
+      'dataNascimento': dataBrParaIso(b.dataNascimento),
       'pesoAtualKg': b.pesoAtualKg,
       'pelagem': b.pelagem,
-      'sexo': b.sexo,
       'categoria': b.categoria,
-      'status': b.status,
       'origem': b.origem,
       'observacoes': b.observacoes,
       'foto': b.foto,
-      'invernadaId': b.invernadaId,
-      'invernadaSyncId': invernadaSyncId,
-      'idMae': b.idMae,
-      'maeSyncId': maeSyncId,
+      'invernadaId': invernadaSyncId,
+      'idMae': maeSyncId,
       'estaDeCria': b.estaDeCria == 1,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    _sync.notificarEscrita();
+    };
 
-    if (registrarAtividade) {
-      await AtividadeService.registrar(
-        uid: uid,
-        sync: _sync,
-        acao: 'bovino_salvo',
-        descricao: 'Salvou o bovino ${b.numeroBrinco}',
+    try {
+      try {
+        await _api.put('$_base/${b.syncId}', corpo: corpo);
+      } on ApiException catch (e) {
+        if (e.statusCode != 404) rethrow;
+        await _api.post(_base, corpo: {...corpo, 'id': b.syncId});
+      }
+      _sync.notificarEscrita();
+    } catch (_) {
+      final outbox = Outbox(db);
+      await outbox.enfileirarUpsert(
+        caminhoBase: _base,
+        syncId: b.syncId,
+        corpo: corpo,
+        descricao: 'Bovino ${b.numeroBrinco}',
       );
+      await outbox.avisar(_sync);
     }
   }
 
-  void excluir(String syncId) {
-    _col.doc(syncId).delete();
-    _sync.notificarEscrita();
-    AtividadeService.registrar(
-      uid: uid,
-      sync: _sync,
-      acao: 'bovino_excluido',
-      descricao: 'Excluiu um bovino do rebanho',
-    );
+  Future<void> excluir(String syncId) async {
+    try {
+      await _api.delete('$_base/$syncId');
+      _sync.notificarEscrita();
+    } catch (_) {
+      final db = await AppDatabase.instance.instanceFor(uid);
+      final outbox = Outbox(db);
+      await outbox.enfileirarChamada(
+        metodo: 'DELETE',
+        caminho: '$_base/$syncId',
+        descricao: 'Excluir bovino',
+      );
+      await outbox.avisar(_sync);
+    }
+  }
+
+  Future<void> darBaixa(
+    String syncId, {
+    required String motivo,
+    required String dataBaixa,
+    String? observacoes,
+  }) async {
+    final corpo = {
+      'motivo': motivo,
+      'dataBaixa': dataBrParaIso(dataBaixa),
+      'observacoes': observacoes,
+    };
+    try {
+      await _api.patch('$_base/$syncId/baixa', corpo: corpo);
+      _sync.notificarEscrita();
+    } catch (_) {
+      final db = await AppDatabase.instance.instanceFor(uid);
+      final outbox = Outbox(db);
+      await outbox.enfileirarChamada(
+        metodo: 'PATCH',
+        caminho: '$_base/$syncId/baixa',
+        corpo: corpo,
+        descricao: 'Baixa de bovino',
+      );
+      await outbox.avisar(_sync);
+    }
+  }
+
+  Future<void> reativar(String syncId) async {
+    try {
+      await _api.patch('$_base/$syncId/reativar');
+      _sync.notificarEscrita();
+    } catch (_) {
+      final db = await AppDatabase.instance.instanceFor(uid);
+      final outbox = Outbox(db);
+      await outbox.enfileirarChamada(
+        metodo: 'PATCH',
+        caminho: '$_base/$syncId/reativar',
+        descricao: 'Reativar bovino',
+      );
+      await outbox.avisar(_sync);
+    }
   }
 }

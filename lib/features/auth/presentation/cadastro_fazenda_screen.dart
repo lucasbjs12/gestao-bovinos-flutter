@@ -45,8 +45,11 @@ class _CadastroFazendaScreenState extends State<CadastroFazendaScreen> {
       final erro = context.read<AuthProvider>().error ?? 'Erro desconhecido.';
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(erro)));
+      return;
     }
-    // Sucesso: AuthProvider → status unverified → _AuthGate mostra VerificacaoEmailScreen.
+    // Sucesso: AuthProvider já atualizou o status; volta pra raiz (_AuthGate)
+    // pra sair de cima das telas de cadastro empilhadas e mostrar a nova tela.
+    Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
   @override

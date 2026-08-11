@@ -380,7 +380,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   onTap: _carregando
                                       ? null
                                       : () => Navigator.pushNamed(
-                                          context, AppRoutes.cadastroFazenda),
+                                          context, AppRoutes.escolhaCadastro),
                                   child: const Text(
                                     'Cadastre-se',
                                     style: TextStyle(

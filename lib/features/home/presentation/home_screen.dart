@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/sync/sync_status_service.dart';
 import '../../auth/auth_provider.dart';
+import '../../fazenda/presentation/seletor_fazenda_sheet.dart';
 import '../../shell/shell_provider.dart';
 import '../home_provider.dart';
 
@@ -30,11 +31,43 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _carregar());
   }
 
+  List<({String id, String nome})> _vinculos = [];
+
   void _carregar() {
     final home = context.read<HomeProvider>();
     home.carregarPreferencias();
-    final uid = context.read<AuthProvider>().currentUser?.uid;
+    final uid = context.read<AuthProvider>().fazendaId;
     if (uid != null) home.carregar(uid);
+    _carregarVinculos();
+  }
+
+  Future<void> _carregarVinculos() async {
+    final v = await context.read<AuthProvider>().fazendasVinculadas();
+    if (mounted) setState(() => _vinculos = v);
+  }
+
+  /// Nome da fazenda ativa: própria = displayName; compartilhada = rótulo
+  /// do vínculo salvo.
+  String _nomeFazendaAtiva(AuthProvider auth) {
+    if (auth.souDono) {
+      final n = auth.currentUser?.displayName ?? '';
+      return n.isEmpty ? 'Minha Fazenda' : n;
+    }
+    final ativo = _vinculos.where((v) => v.id == auth.fazendaId);
+    if (ativo.isNotEmpty && ativo.first.nome.isNotEmpty) return ativo.first.nome;
+    return 'Fazenda compartilhada';
+  }
+
+  Future<void> _abrirSeletor() async {
+    final mudou = await mostrarSeletorFazenda(context);
+    if (mudou && mounted) {
+      await _carregarVinculos();
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Agora você está em ${_nomeFazendaAtiva(auth)}.')),
+      );
+    }
   }
 
   String _saudacao() {
@@ -58,7 +91,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final auth = context.watch<AuthProvider>();
     final home = context.watch<HomeProvider>();
     final sync = context.watch<SyncStatusService>();
-    final nomeFazenda = auth.currentUser?.displayName ?? '';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4F0),
@@ -66,15 +98,18 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _Header(
             saudacao: _saudacao(),
-            nomeFazenda: nomeFazenda,
+            nomeFazenda: _nomeFazendaAtiva(auth),
             data: _dataFormatada(),
             syncEstado: sync.estado,
+            pendencias: sync.pendencias,
+            souDono: auth.souDono,
+            onTapFazenda: _abrirSeletor,
           ),
           Expanded(
             child: RefreshIndicator(
               color: const Color(0xFF2E7D32),
               onRefresh: () async {
-                final uid = context.read<AuthProvider>().currentUser?.uid;
+                final uid = context.read<AuthProvider>().fazendaId;
                 if (uid != null) await context.read<HomeProvider>().carregar(uid);
               },
               child: home.isLoading
@@ -101,25 +136,36 @@ class _Header extends StatelessWidget {
   final String nomeFazenda;
   final String data;
   final SyncEstado syncEstado;
+  final int pendencias;
+  final bool souDono;
+  final VoidCallback onTapFazenda;
 
   const _Header({
     required this.saudacao,
     required this.nomeFazenda,
     required this.data,
     required this.syncEstado,
+    required this.pendencias,
+    required this.souDono,
+    required this.onTapFazenda,
   });
 
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
 
+    // Verde = sua fazenda; âmbar = você é convidado numa fazenda compartilhada.
+    final gradiente = souDono
+        ? const [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF388E3C)]
+        : const [Color(0xFF7A4A0A), Color(0xFF9A5E0C), Color(0xFFB0700F)];
+
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF388E3C)],
-          stops: [0.0, 0.55, 1.0],
+          colors: gradiente,
+          stops: const [0.0, 0.55, 1.0],
         ),
       ),
       child: Stack(
@@ -168,28 +214,54 @@ class _Header extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        nomeFazenda.isEmpty ? 'Minha Fazenda' : nomeFazenda,
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
-                          height: 1.15,
+                      // Chip da fazenda ativa: nome + seta; abre o seletor.
+                      InkWell(
+                        onTap: onTapFazenda,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                nomeFazenda,
+                                style: const TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: -0.5,
+                                  height: 1.15,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.only(left: 4, top: 4),
+                              child: Icon(Icons.keyboard_arrow_down,
+                                  color: Colors.white, size: 24),
+                            ),
+                          ],
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        data,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0x8FFFFFFF),
-                        ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          _PapelPill(souDono: souDono),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              data,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0x8FFFFFFF),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 14),
-                      _SyncChip(estado: syncEstado),
+                      _SyncChip(estado: syncEstado, pendencias: pendencias),
                     ],
                   ),
                 ),
@@ -218,18 +290,62 @@ class _Header extends StatelessWidget {
   }
 }
 
+// ─── Pílula de papel (dono / convidado) ─────────────────────────────────────
+
+class _PapelPill extends StatelessWidget {
+  final bool souDono;
+  const _PapelPill({required this.souDono});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0x33FFFFFF),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(souDono ? Icons.star : Icons.badge_outlined,
+              size: 12, color: Colors.white),
+          const SizedBox(width: 5),
+          Text(
+            souDono ? 'Dono' : 'Convidado',
+            style: const TextStyle(
+              fontSize: 11,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Chip de sincronização ───────────────────────────────────────────────────
 
 class _SyncChip extends StatelessWidget {
   final SyncEstado estado;
-  const _SyncChip({required this.estado});
+  final int pendencias;
+  const _SyncChip({required this.estado, this.pendencias = 0});
 
   @override
   Widget build(BuildContext context) {
     final (icon, label) = switch (estado) {
       SyncEstado.sincronizado  => (Icons.cloud_done_outlined, 'Sincronizado'),
       SyncEstado.sincronizando => (Icons.sync, 'Sincronizando…'),
-      SyncEstado.offline       => (Icons.cloud_off_outlined, 'Sem conexão'),
+      SyncEstado.offline       => (
+          Icons.cloud_off_outlined,
+          pendencias > 0
+              ? 'Sem conexão · $pendencias pendente${pendencias == 1 ? '' : 's'}'
+              : 'Sem conexão',
+        ),
+      SyncEstado.pendente      => (
+          Icons.cloud_upload_outlined,
+          '$pendencias pendente${pendencias == 1 ? '' : 's'} p/ enviar',
+        ),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

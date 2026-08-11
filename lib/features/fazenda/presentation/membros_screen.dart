@@ -18,7 +18,7 @@ class _MembrosScreenState extends State<MembrosScreen> {
   List<Membro> _membros = [];
   bool _carregando = true;
 
-  String? get _fazendaId => context.read<AuthProvider>().currentUser?.uid;
+  String? get _fazendaId => context.read<AuthProvider>().fazendaId;
 
   @override
   void initState() {
@@ -68,7 +68,7 @@ class _MembrosScreenState extends State<MembrosScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Envie este código ao capataz. Ele vale por '
+            const Text('Envie este código ao convidado. Ele vale por '
                 '${FazendaMembrosService.conviteValidadeHoras} horas e só '
                 'pode ser usado uma vez.'),
             const SizedBox(height: 16),
@@ -147,7 +147,7 @@ class _MembrosScreenState extends State<MembrosScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _gerarConvite,
         icon: const Icon(Icons.person_add_alt),
-        label: const Text('Convidar capataz'),
+        label: const Text('Convidar'),
       ),
       body: _carregando
           ? const Center(child: CircularProgressIndicator())
@@ -158,7 +158,7 @@ class _MembrosScreenState extends State<MembrosScreen> {
                   const Padding(
                     padding: EdgeInsets.all(16),
                     child: Text(
-                      'O dono tem acesso total. O capataz registra o manejo do '
+                      'O dono tem acesso total. O convidado registra o manejo do '
                       'dia a dia, mas não pode excluir animais nem gerenciar '
                       'membros. Tudo o que ele faz aparece no diário de '
                       'atividades.',
@@ -170,7 +170,7 @@ class _MembrosScreenState extends State<MembrosScreen> {
                         child: Icon(m.ehDono ? Icons.star : Icons.person),
                       ),
                       title: Text(m.nome ?? m.uid),
-                      subtitle: Text(m.ehDono ? 'Dono' : 'Capataz'),
+                      subtitle: Text(m.ehDono ? 'Dono' : 'Convidado'),
                       trailing: m.ehDono
                           ? null
                           : IconButton(

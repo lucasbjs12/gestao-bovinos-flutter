@@ -1,6 +1,8 @@
 abstract class AppRoutes {
   static const login = '/login';
+  static const escolhaCadastro = '/escolha-cadastro';
   static const cadastroFazenda = '/cadastro-fazenda';
+  static const cadastroConvidado = '/cadastro-convidado';
   static const verificacaoEmail = '/verificacao-email';
   static const shell = '/shell';
   static const cadastroBovino = '/cadastro-bovino';
@@ -18,4 +20,5 @@ abstract class AppRoutes {
   static const cadastroLote = '/cadastro-lote';
   static const diarioAtividades = '/diario-atividades';
   static const membros = '/membros';
+  static const fazendaAtiva = '/fazenda-ativa';
 }

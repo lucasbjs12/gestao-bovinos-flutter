@@ -1,40 +1,18 @@
-import 'package:firebase_auth/firebase_auth.dart';
-
-import '../../core/db/app_database.dart';
 import '../../core/sync/sync_status_service.dart';
-import 'data/atividade.dart';
-import 'data/atividade_local_repository.dart';
-import 'data/atividade_remote_repository.dart';
 
-/// Grava uma entrada no diário de atividades (local + nuvem).
+/// O backend próprio já registra uma entrada no diário de atividades do
+/// lado do servidor em cada escrita (bovino_salvo, evento_salvo, etc. --
+/// ver `atividadeRepository.registrar` no backend), então não existe mais
+/// endpoint para gravar uma atividade "à mão" pelo cliente. O diário local
+/// é preenchido só de leitura pelo `PollingSyncService`.
 ///
-/// Chamado pelos repositórios remotos, que são o funil de toda mutação feita
-/// pelo usuário — a sync que desce da nuvem não passa por eles, então não gera
-/// eco no diário. Nunca lança: o diário jamais pode quebrar a operação
-/// principal.
+/// Método mantido vazio (em vez de remover todos os call sites espalhados
+/// pelo app) só para não quebrar quem ainda chama isso.
 class AtividadeService {
   static Future<void> registrar({
     required String uid,
     required SyncStatusService sync,
     required String acao,
     required String descricao,
-  }) async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      final nome = (user?.displayName?.isNotEmpty ?? false)
-          ? user!.displayName
-          : user?.email;
-
-      final atividade = Atividade.criar(
-        autorUid: uid,
-        autorNome: nome,
-        acao: acao,
-        descricao: descricao,
-      );
-
-      final db = await AppDatabase.instance.instanceFor(uid);
-      await AtividadeLocalRepository(db).inserir(atividade);
-      AtividadeRemoteRepository(uid: uid, sync: sync).salvar(atividade);
-    } catch (_) {}
-  }
+  }) async {}
 }

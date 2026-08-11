@@ -27,7 +27,7 @@ class _DiarioAtividadesScreenState extends State<DiarioAtividadesScreen> {
   }
 
   Future<void> _carregar({bool mais = false}) async {
-    final uid = context.read<AuthProvider>().currentUser?.uid;
+    final uid = context.read<AuthProvider>().fazendaId;
     if (uid == null) return;
 
     final db = await AppDatabase.instance.instanceFor(uid);

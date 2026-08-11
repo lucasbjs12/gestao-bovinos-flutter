@@ -29,7 +29,7 @@ service cloud.firestore {
 
     // ── Multi-usuário por fazenda ─────────────────────────────────────────
     // O dono é reconhecido pela construção fazendaId == uid (compatível com
-    // o app atual, mesmo sem doc de membro). Capataz vira membro via doc em
+    // o app atual, mesmo sem doc de membro). Convidado vira membro via doc em
     // fazendas/{fazendaId}/membros/{uid}, criado pelo fluxo de convite.
 
     function ehDonoDaFazenda(fazendaId) {
@@ -75,17 +75,17 @@ service cloud.firestore {
       }
 
       // Membros: só o dono gerencia; papel restrito aos valores conhecidos.
-      // Ninguém (nem capataz) escala o próprio papel.
+      // Ninguém (nem convidado) escala o próprio papel.
       match /membros/{membroUid} {
         allow create, update: if ehDonoDaFazenda(fazendaId)
-          && request.resource.data.papel in ['dono', 'capataz'];
+          && request.resource.data.papel in ['dono', 'convidado'];
 
         // Auto-ingresso: o convidado cria o próprio doc de membro como
-        // capataz quando apresenta um convite válido (não usado, não
+        // convidado quando apresenta um convite válido (não usado, não
         // expirado) que aponta para esta fazenda.
         allow create: if autenticado()
           && request.auth.uid == membroUid
-          && request.resource.data.papel == 'capataz'
+          && request.resource.data.papel == 'convidado'
           && conviteValidoPara(fazendaId, request.resource.data.conviteCodigo);
       }
     }
@@ -95,7 +95,7 @@ service cloud.firestore {
       return codigo is string
         && exists(ref)
         && get(ref).data.fazendaId == fazendaId
-        && get(ref).data.papel == 'capataz'
+        && get(ref).data.papel == 'convidado'
         && get(ref).data.usado == false
         && get(ref).data.expiraEm > request.time;
     }
@@ -105,10 +105,10 @@ service cloud.firestore {
     match /convites/{codigo} {
       allow get: if autenticado();
 
-      // Só o dono da fazenda cria convites de capataz para a própria fazenda.
+      // Só o dono da fazenda cria convites de convidado para a própria fazenda.
       allow create: if autenticado()
         && request.auth.uid == request.resource.data.fazendaId
-        && request.resource.data.papel == 'capataz'
+        && request.resource.data.papel == 'convidado'
         && request.resource.data.usado == false;
 
       // Dono cancela/gerencia; ou o convidado marca como usado ao aceitar.

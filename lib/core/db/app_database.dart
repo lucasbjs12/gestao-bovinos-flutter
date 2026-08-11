@@ -30,7 +30,7 @@ class AppDatabase {
 
     return openDatabase(
       dbPath,
-      version: 4,
+      version: 5,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute(
@@ -48,6 +48,9 @@ class AppDatabase {
         }
         if (oldVersion < 4) {
           await _criarTabelaAtividades(db);
+        }
+        if (oldVersion < 5) {
+          await _criarTabelaPendingOps(db);
         }
       },
       onCreate: (db, version) async {
@@ -158,6 +161,7 @@ class AppDatabase {
         await db.execute('CREATE INDEX idx_leitura_rfid_bovinoId ON leitura_rfid(bovinoId)');
 
         await _criarTabelaAtividades(db);
+        await _criarTabelaPendingOps(db);
       },
     );
   }
@@ -177,6 +181,26 @@ class AppDatabase {
     await db.execute(
       'CREATE INDEX idx_atividades_dataMillis ON atividades(dataMillis)',
     );
+  }
+
+  /// Fila de escritas que falharam (tipicamente por falta de conexão) --
+  /// substitui a fila offline automática que o SDK do Firestore dava de
+  /// graça. `tipo` é 'upsert' (tenta PUT, cai para POST se 404 -- mesma
+  /// lógica de sempre, só reaplicada aqui na hora do flush) ou 'chamada'
+  /// (um verbo HTTP direto: DELETE, PATCH de baixa/reativação, etc).
+  static Future<void> _criarTabelaPendingOps(Database db) async {
+    await db.execute('''
+      CREATE TABLE pending_ops (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tipo TEXT NOT NULL,
+        metodo TEXT,
+        caminho TEXT NOT NULL,
+        syncId TEXT,
+        corpo TEXT,
+        descricao TEXT,
+        criadoEm INTEGER NOT NULL
+      )
+    ''');
   }
 
   Future<void> close() async {

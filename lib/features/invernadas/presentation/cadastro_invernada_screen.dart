@@ -33,7 +33,7 @@ class _CadastroInvernadaScreenState extends State<CadastroInvernadaScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _uid = context.read<AuthProvider>().currentUser?.uid;
+      _uid = context.read<AuthProvider>().fazendaId;
       _invernadaId = ModalRoute.of(context)?.settings.arguments as int?;
       if (_invernadaId != null) await _carregar();
     });

@@ -39,7 +39,7 @@ class _EventosSanitariosScreenState extends State<EventosSanitariosScreen> {
   }
 
   Future<void> _carregar() async {
-    final uid = context.read<AuthProvider>().currentUser?.uid;
+    final uid = context.read<AuthProvider>().fazendaId;
     if (uid != null && mounted) {
       await context.read<EventosSanitariosProvider>().carregar(uid);
     }

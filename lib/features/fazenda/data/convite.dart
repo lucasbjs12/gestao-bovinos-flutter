@@ -1,7 +1,3 @@
-import 'dart:math';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Convite {
   final String codigo;
   final String fazendaId;
@@ -22,24 +18,15 @@ class Convite {
   bool get expirado => DateTime.now().isAfter(expiraEm);
   bool get valido => !usado && !expirado;
 
-  // Sem caracteres ambíguos (0/O, 1/I) para ditar por telefone/WhatsApp.
-  static const _alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-  static String gerarCodigo() {
-    final rnd = Random.secure();
-    final sufixo = List.generate(
-      6,
-      (_) => _alfabeto[rnd.nextInt(_alfabeto.length)],
-    ).join();
-    return 'BOV-$sufixo';
-  }
-
-  factory Convite.fromMap(String codigo, Map<String, dynamic> m) => Convite(
-        codigo: codigo,
+  /// Formato do backend próprio (`GET /convites/:codigo` ou o item retornado
+  /// por `POST /fazendas/:id/convites`).
+  factory Convite.fromBackend(Map<String, dynamic> m) => Convite(
+        codigo: m['codigo'] as String,
         fazendaId: m['fazendaId'] as String? ?? '',
-        papel: m['papel'] as String? ?? 'capataz',
-        criadoPorNome: m['criadoPorNome'] as String?,
-        expiraEm: (m['expiraEm'] as Timestamp?)?.toDate() ??
+        papel: m['papel'] as String? ?? 'convidado',
+        criadoPorNome:
+            (m['fazenda'] as Map<String, dynamic>?)?['nome'] as String?,
+        expiraEm: DateTime.tryParse(m['expiraEm'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0),
         usado: m['usado'] as bool? ?? false,
       );

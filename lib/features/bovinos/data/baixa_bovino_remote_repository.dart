@@ -1,73 +1,27 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../../../core/sync/sync_status_service.dart';
-import '../../atividades/atividade_service.dart';
 import 'baixa_bovino.dart';
 import 'bovino.dart';
+import 'bovino_remote_repository.dart';
 
-/// Espelha baixas e reativações no Cloud Firestore (fire-and-forget).
+/// Fina camada sobre [BovinoRemoteRepository] -- baixa/reativação/exclusão
+/// permanente de um bovino baixado já são ações do próprio recurso Bovino
+/// no backend (não existe mais uma coleção separada de "baixas").
 class BaixaBovinoRemoteRepository {
   final String uid;
-  final SyncStatusService _syncSvc;
-  final FirebaseFirestore _fs;
+  final BovinoRemoteRepository _bovinoRepo;
 
   BaixaBovinoRemoteRepository({required this.uid, required SyncStatusService sync})
-      : _syncSvc = sync, _fs = FirebaseFirestore.instance;
+    : _bovinoRepo = BovinoRemoteRepository(uid: uid, sync: sync);
 
-  CollectionReference<Map<String, dynamic>> get _bovinoCol =>
-      _fs.collection('fazendas').doc(uid).collection('bovinos');
+  Future<void> darBaixa(Bovino bovino, BaixaBovino baixa) => _bovinoRepo.darBaixa(
+    bovino.syncId,
+    motivo: baixa.motivo,
+    dataBaixa: baixa.dataBaixa,
+    observacoes: baixa.observacoes,
+  );
 
-  CollectionReference<Map<String, dynamic>> get _baixaCol =>
-      _fs.collection('fazendas').doc(uid).collection('baixas_bovinos');
+  Future<void> reativar(Bovino bovino) => _bovinoRepo.reativar(bovino.syncId);
 
-  void darBaixa(Bovino bovino, BaixaBovino baixa) {
-    // Atualiza status do bovino
-    _bovinoCol.doc(bovino.syncId).set(
-      {'status': 'Inativo', 'updatedAt': FieldValue.serverTimestamp()},
-      SetOptions(merge: true),
-    );
-    // Grava registro da baixa (chave = id local do bovino, 1 baixa ativa por animal)
-    _baixaCol.doc(bovino.id.toString()).set({
-      'bovinoId': baixa.bovinoId,
-      'bovinoSyncId': bovino.syncId,
-      'motivo': baixa.motivo,
-      'dataBaixa': baixa.dataBaixa,
-      'dataBaixaMillis': baixa.dataBaixaMillis,
-      if (baixa.observacoes != null) 'observacoes': baixa.observacoes,
-    });
-    _syncSvc.notificarEscrita();
-    AtividadeService.registrar(
-      uid: uid,
-      sync: _syncSvc,
-      acao: 'baixa',
-      descricao: 'Deu baixa no bovino ${bovino.numeroBrinco} — ${baixa.motivo}',
-    );
-  }
-
-  void reativar(Bovino bovino) {
-    _bovinoCol.doc(bovino.syncId).set(
-      {'status': 'Ativo', 'updatedAt': FieldValue.serverTimestamp()},
-      SetOptions(merge: true),
-    );
-    _baixaCol.doc(bovino.id.toString()).delete();
-    _syncSvc.notificarEscrita();
-    AtividadeService.registrar(
-      uid: uid,
-      sync: _syncSvc,
-      acao: 'reativacao',
-      descricao: 'Reativou o bovino ${bovino.numeroBrinco}',
-    );
-  }
-
-  void excluirPermanente({required String syncId, required int bovinoId}) {
-    _bovinoCol.doc(syncId).delete();
-    _baixaCol.doc(bovinoId.toString()).delete();
-    _syncSvc.notificarEscrita();
-    AtividadeService.registrar(
-      uid: uid,
-      sync: _syncSvc,
-      acao: 'bovino_excluido',
-      descricao: 'Excluiu permanentemente um bovino baixado',
-    );
-  }
+  Future<void> excluirPermanente({required String syncId, required int bovinoId}) =>
+      _bovinoRepo.excluir(syncId);
 }

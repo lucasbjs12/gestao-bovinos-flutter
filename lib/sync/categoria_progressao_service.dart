@@ -1,5 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sqflite/sqflite.dart';
+
+import '../core/api/api_client.dart';
+import '../core/sync/outbox.dart';
 
 /// Verifica todos os bovinos ATIVOS com data de nascimento e promove a categoria
 /// conforme a idade:
@@ -118,20 +120,21 @@ class CategoriaProgressaoService {
         whereArgs: [id],
       );
 
-      // 2) Espelha no Firestore (fire-and-forget; funciona offline)
+      // 2) Espelha no backend; se falhar (ex. sem rede), vai pro Outbox em
+      // vez de se perder -- senão a próxima rodada de sync puxa a
+      // categoria antiga de volta do servidor e desfaz essa promoção local.
       if (syncId != null && syncId.isNotEmpty) {
-        FirebaseFirestore.instance
-            .collection('fazendas')
-            .doc(uid)
-            .collection('bovinos')
-            .doc(syncId)
-            .set(
-              {
-                'categoria': nova,
-                'updatedAt': FieldValue.serverTimestamp(),
-              },
-              SetOptions(merge: true),
-            );
+        final caminho = '/fazendas/$uid/bovinos/$syncId';
+        try {
+          await ApiClient().put(caminho, corpo: {'categoria': nova});
+        } catch (_) {
+          await Outbox(db).enfileirarChamada(
+            metodo: 'PUT',
+            caminho: caminho,
+            corpo: {'categoria': nova},
+            descricao: 'Categoria de $brinco → $nova',
+          );
+        }
       }
 
       alterados.add(

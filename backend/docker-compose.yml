@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gestaobovinos
+      POSTGRES_PASSWORD: gestaobovinos
+      POSTGRES_DB: gestaobovinos
+    ports:
+      - "5433:5432"  # host 5433 -> ja existe outro Postgres nativo ocupando a 5432 nesta maquina
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -119,12 +118,22 @@ class _PerfilScreenState extends State<PerfilScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.pushNamed(context, AppRoutes.diarioAtividades),
           ),
+          if (auth.souDono)
+            ListTile(
+              leading: const Icon(Icons.group_outlined),
+              title: const Text('Membros da fazenda'),
+              subtitle: const Text('Convide alguém e gerencie o acesso'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.pushNamed(context, AppRoutes.membros),
+            ),
           ListTile(
-            leading: const Icon(Icons.group_outlined),
-            title: const Text('Membros da fazenda'),
-            subtitle: const Text('Convide um capataz e gerencie o acesso'),
+            leading: const Icon(Icons.swap_horiz),
+            title: const Text('Fazenda ativa'),
+            subtitle: Text(auth.souDono
+                ? 'Você está na sua fazenda'
+                : 'Você está numa fazenda compartilhada'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.pushNamed(context, AppRoutes.membros),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.fazendaAtiva),
           ),
 
           const Divider(),
@@ -177,7 +186,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Future<void> _exportarCSV() async {
-    final uid = context.read<AuthProvider>().currentUser?.uid;
+    final uid = context.read<AuthProvider>().fazendaId;
     if (uid == null) return;
 
     final db = await AppDatabase.instance.instanceFor(uid);
@@ -427,36 +436,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
     if (!mounted || senha == null || senha.isEmpty) return;
 
     final auth = context.read<AuthProvider>();
-    final uid  = auth.currentUser?.uid;
 
-    // 1. Verificar a senha antes de tocar em qualquer dado
-    final erroAuth = await auth.reautenticar(senha);
-    if (!mounted) return;
-    if (erroAuth != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(erroAuth)));
-      return;
-    }
-
-    // 2. Senha correta — agora sim deleta os dados do Firestore
-    if (uid != null) {
-      try {
-        final fs = FirebaseFirestore.instance;
-        final fazendaRef = fs.collection('fazendas').doc(uid);
-        for (final col in [
-          'bovinos', 'invernadas', 'eventos_sanitarios',
-          'baixas_bovinos', 'movimentacoes', 'atividades', 'membros',
-        ]) {
-          final snap = await fazendaRef.collection(col).get();
-          for (final doc in snap.docs) {
-            await doc.reference.delete();
-          }
-        }
-        await fazendaRef.delete();
-      } catch (_) {}
-    }
-
-    // 3. Deleta a conta de autenticação
-    if (!mounted) return;
+    // O backend valida a senha e apaga a fazenda própria (e tudo dela em
+    // cascata) numa única transaction -- não precisa mais de um passo
+    // manual de limpeza antes.
     final erro = await auth.excluirConta(senha);
 
     if (!mounted) return;

@@ -86,7 +86,7 @@ static const _statusOpcoes = ['Ativo', 'Em quarentena'];
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _uid = context.read<AuthProvider>().currentUser?.uid;
+      _uid = context.read<AuthProvider>().fazendaId;
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is int) {
         _bovinoId = args;

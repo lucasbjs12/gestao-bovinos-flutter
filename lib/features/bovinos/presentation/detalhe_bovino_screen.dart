@@ -8,6 +8,7 @@ import '../../../core/db/app_database.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/sync/sync_status_service.dart';
 import '../../../core/utils/photo_service.dart';
+import '../../atividades/atividade_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../eventos_sanitarios/data/evento_sanitario_completo.dart';
 import '../../eventos_sanitarios/data/evento_sanitario_local_repository.dart';
@@ -41,7 +42,7 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
   }
 
   Future<void> _carregar() async {
-    _uid = context.read<AuthProvider>().currentUser?.uid;
+    _uid = context.read<AuthProvider>().fazendaId;
     final id = ModalRoute.of(context)?.settings.arguments as int?;
     if (id == null || _uid == null) {
       setState(() => _carregando = false);
@@ -208,10 +209,17 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
     await repo.desvincularTerneiro(_terneiro!.id!);
 
     if (mounted) {
-      BovinoRemoteRepository(
+      final syncSvc = context.read<SyncStatusService>();
+      BovinoRemoteRepository(uid: _uid!, sync: syncSvc).salvar(
+        _terneiro!.copyWith(clearIdMae: true),
+        registrarAtividade: false,
+      );
+      AtividadeService.registrar(
         uid: _uid!,
-        sync: context.read<SyncStatusService>(),
-      ).salvar(_terneiro!.copyWith(clearIdMae: true));
+        sync: syncSvc,
+        acao: 'bovino_desvinculado',
+        descricao: 'Desvinculou o terneiro ${_terneiro!.numeroBrinco} da mãe',
+      );
       context.read<BovinosProvider>().recarregar();
       context.read<HomeProvider>().carregar(_uid!);
       await _carregar();
@@ -234,6 +242,7 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
 
     final b = _bovino!;
     final cs = Theme.of(context).colorScheme;
+    final souDono = context.watch<AuthProvider>().souDono;
 
     return Scaffold(
       appBar: AppBar(
@@ -244,29 +253,30 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
             tooltip: 'Editar',
             onPressed: _editar,
           ),
-          PopupMenuButton<String>(
-            tooltip: 'Mais opções',
-            onSelected: (v) {
-              if (v == 'excluir') _confirmarExclusao();
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: 'excluir',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_outline,
-                        color: Theme.of(context).colorScheme.error, size: 20),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Excluir animal',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.error),
-                    ),
-                  ],
+          if (souDono)
+            PopupMenuButton<String>(
+              tooltip: 'Mais opções',
+              onSelected: (v) {
+                if (v == 'excluir') _confirmarExclusao();
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'excluir',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline,
+                          color: Theme.of(context).colorScheme.error, size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Excluir animal',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -598,7 +608,7 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
                 label: const Text('Criar evento sanitário'),
               ),
             ],
-            if (b.status.toLowerCase() != 'inativo') ...[
+            if (souDono && b.status.toLowerCase() != 'inativo') ...[
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
@@ -921,7 +931,15 @@ class _VincularTerneiroSheetState extends State<_VincularTerneiroSheet> {
         await repo.vincularTerneiro(_encontrado!.id!, mae.id!);
         if (mounted) {
           final atualizado = _encontrado!.copyWith(idMae: mae.id);
-          BovinoRemoteRepository(uid: uid, sync: syncSvc).salvar(atualizado);
+          BovinoRemoteRepository(uid: uid, sync: syncSvc)
+              .salvar(atualizado, registrarAtividade: false);
+          AtividadeService.registrar(
+            uid: uid,
+            sync: syncSvc,
+            acao: 'bovino_vinculado',
+            descricao:
+                'Vinculou o terneiro ${atualizado.numeroBrinco} à mãe ${mae.numeroBrinco}',
+          );
         }
       } else {
         if (!mounted) return;
@@ -954,7 +972,15 @@ class _VincularTerneiroSheetState extends State<_VincularTerneiroSheet> {
           mae: mae,
         );
         if (mounted) {
-          BovinoRemoteRepository(uid: uid, sync: syncSvc).salvar(terneiro);
+          BovinoRemoteRepository(uid: uid, sync: syncSvc)
+              .salvar(terneiro, registrarAtividade: false);
+          AtividadeService.registrar(
+            uid: uid,
+            sync: syncSvc,
+            acao: 'bovino_cadastrado',
+            descricao:
+                'Cadastrou o terneiro ${terneiro.numeroBrinco} vinculado à mãe ${mae.numeroBrinco}',
+          );
         }
       }
 
@@ -1115,7 +1141,8 @@ class _DarBaixaSheet extends StatefulWidget {
 }
 
 class _DarBaixaSheetState extends State<_DarBaixaSheet> {
-  static const _motivos = ['Venda', 'Abate', 'Morte', 'Doação', 'Outros'];
+  // Precisa bater exatamente com o enum MotivoBaixa do backend.
+  static const _motivos = ['Venda', 'Morte', 'Furto', 'Outros'];
 
   String _motivo = 'Venda';
   DateTime _dataBaixa = DateTime.now();

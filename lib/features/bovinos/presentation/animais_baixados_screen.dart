@@ -44,7 +44,7 @@ class _AnimaisBaixadosScreenState extends State<AnimaisBaixadosScreen> {
   }
 
   Future<void> _carregar() async {
-    final uid = context.read<AuthProvider>().currentUser?.uid;
+    final uid = context.read<AuthProvider>().fazendaId;
     if (uid == null) { setState(() => _carregando = false); return; }
     final db = await AppDatabase.instance.instanceFor(uid);
     final lista = await BovinoLocalRepository(db).listarBaixados();
@@ -114,6 +114,7 @@ class _AnimaisBaixadosScreenState extends State<AnimaisBaixadosScreen> {
   }
 
   void _mostrarAcoes(BovinoBaixado b) {
+    final souDono = context.read<AuthProvider>().souDono;
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(
@@ -143,18 +144,25 @@ class _AnimaisBaixadosScreenState extends State<AnimaisBaixadosScreen> {
               ),
             ),
             const Divider(),
-            ListTile(
-              leading: const Icon(Icons.refresh_outlined),
-              title: const Text('Reativar animal'),
-              subtitle: const Text('Volta para a lista de ativos'),
-              onTap: () { Navigator.pop(ctx); _confirmarReativacao(b); },
-            ),
-            ListTile(
-              leading: Icon(Icons.delete_forever_outlined, color: Theme.of(ctx).colorScheme.error),
-              title: Text('Excluir permanentemente', style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
-              subtitle: const Text('Apaga o animal e todo o histórico'),
-              onTap: () { Navigator.pop(ctx); _excluirPermanentemente(b); },
-            ),
+            if (souDono) ...[
+              ListTile(
+                leading: const Icon(Icons.refresh_outlined),
+                title: const Text('Reativar animal'),
+                subtitle: const Text('Volta para a lista de ativos'),
+                onTap: () { Navigator.pop(ctx); _confirmarReativacao(b); },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete_forever_outlined, color: Theme.of(ctx).colorScheme.error),
+                title: Text('Excluir permanentemente', style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+                subtitle: const Text('Apaga o animal e todo o histórico'),
+                onTap: () { Navigator.pop(ctx); _excluirPermanentemente(b); },
+              ),
+            ] else
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Somente o dono da fazenda pode reativar ou '
+                    'excluir animais baixados.'),
+              ),
             const SizedBox(height: 8),
           ],
         ),
@@ -179,7 +187,7 @@ class _AnimaisBaixadosScreenState extends State<AnimaisBaixadosScreen> {
     );
     if (ok != true || !mounted) return;
 
-    final uid         = context.read<AuthProvider>().currentUser?.uid;
+    final uid         = context.read<AuthProvider>().fazendaId;
     if (uid == null) return;
     final syncSvc     = context.read<SyncStatusService>();
     final bovinosProv = context.read<BovinosProvider>();
@@ -215,7 +223,7 @@ class _AnimaisBaixadosScreenState extends State<AnimaisBaixadosScreen> {
     );
     if (ok != true || !mounted) return;
 
-    final uid         = context.read<AuthProvider>().currentUser?.uid;
+    final uid         = context.read<AuthProvider>().fazendaId;
     if (uid == null) return;
     final syncSvc     = context.read<SyncStatusService>();
     final bovinosProv = context.read<BovinosProvider>();

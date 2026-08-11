@@ -35,7 +35,7 @@ class _DetalheEventoScreenState extends State<DetalheEventoScreen> {
   }
 
   Future<void> _carregar() async {
-    _uid = context.read<AuthProvider>().currentUser?.uid;
+    _uid = context.read<AuthProvider>().fazendaId;
     final id = ModalRoute.of(context)?.settings.arguments as int?;
     if (id == null || _uid == null) {
       setState(() => _carregando = false);
@@ -129,11 +129,12 @@ class _DetalheEventoScreenState extends State<DetalheEventoScreen> {
             tooltip: 'Editar',
             onPressed: _editar,
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            tooltip: 'Excluir',
-            onPressed: _confirmarExclusao,
-          ),
+          if (context.watch<AuthProvider>().souDono)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Excluir',
+              onPressed: _confirmarExclusao,
+            ),
         ],
       ),
       body: ListView(

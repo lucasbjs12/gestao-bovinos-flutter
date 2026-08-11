@@ -65,7 +65,7 @@ fazendas
 membros
   fazenda_id UUID FK -> fazendas ON DELETE CASCADE
   usuario_id UUID FK -> usuarios ON DELETE CASCADE
-  papel TEXT NOT NULL CHECK (papel IN ('dono','capataz'))   -- reconciliar nome definitivo antes de migrar
+  papel TEXT NOT NULL CHECK (papel IN ('dono','convidado'))
   nome TEXT
   desde TIMESTAMPTZ NOT NULL DEFAULT now()
   PRIMARY KEY (fazenda_id, usuario_id)
@@ -73,7 +73,7 @@ membros
 convites
   codigo TEXT PK                                -- BOV-XXXXXX
   fazenda_id UUID FK -> fazendas NOT NULL
-  papel TEXT NOT NULL DEFAULT 'capataz'
+  papel TEXT NOT NULL DEFAULT 'convidado'
   criado_por UUID FK -> usuarios
   criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
   expira_em TIMESTAMPTZ NOT NULL
@@ -172,7 +172,7 @@ Todas as tabelas com `fazenda_id` levam índice composto `(fazenda_id, ...)` pen
 - `POST /api/v1/auth/refresh`
 - `POST /api/v1/auth/logout` (revoga refresh token)
 - Middleware `autenticar`: valida JWT, popula `req.usuario`.
-- Middleware `carregarFazendaAtiva`: resolve `fazendaId` (do header `X-Fazenda-Id` ou da própria fazenda do usuário) e verifica associação em `membros`/`fazendas.dono_id`.
+- Middleware `carregarFazendaAtiva`: resolve `fazendaId` a partir do `:fazendaId` no path (rotas montadas como `/fazendas/:fazendaId/...`) e verifica associação em `membros`/`fazendas.dono_id` (implementado assim em vez do header `X-Fazenda-Id` cogitado inicialmente — mais RESTful e mais fácil de testar).
 - Middleware `exigirPapel('dono' | 'capataz')`: replica a matriz atual —
   - leitura/criação/edição de recursos operacionais: qualquer membro
   - exclusão (bovino, invernada, evento, fazenda, membro): só dono
@@ -252,12 +252,12 @@ Resposta padronizada:
 
 ---
 
-## 6. Pontos que precisam de decisão sua antes de eu começar a codar
+## 6. Decisões travadas (2026-07-31)
 
-1. **Nome definitivo do papel de colaborador**: `convidado` (código committed) ou `capataz` (trabalho não commitado em andamento)? Isso trava o enum/CHECK constraint.
-2. **Lista exata de motivos de baixa** (hoje é string livre) — quer travar em enum fixo (`Morte, Venda, Furto, Outros`) ou manter texto livre?
-3. **Cobrança/assinatura**: reativar `exigirAssinaturaAtiva` já nesta fase 1 do backend, ou continuar liberado igual está hoje?
-4. **RFID (`leituras_rfid`)**: sincronizar entre dispositivos agora, ou manter local-only como é hoje?
-5. **Hospedagem do Postgres/API**: já tem preferência (Railway, Fly.io, VPS próprio, AWS) ou eu recomendo uma pensando em custo pra um app ainda pequeno?
+1. **Papel de colaborador**: `convidado` (mantém o nome já usado no código committed; ignora a tentativa de renomear pra "capataz" no working tree não commitado).
+2. **Motivos de baixa**: enum fixo `Morte | Venda | Furto | Outros` (`CHECK` constraint na tabela `baixas_bovinos`).
+3. **Cobrança/assinatura**: `exigirAssinaturaAtiva` **ativo já na Fase 1** — login/rotas operacionais verificam `status_assinatura = 'ativo'` desde o início (não fica liberado geral como no Firebase hoje).
+4. **RFID**: fora de escopo por enquanto — sem tabela `leituras_rfid` na v1 do backend, sem endpoint. Revisitar quando o app for usar RFID de verdade.
+5. **Hospedagem**: **Railway** — Postgres gerenciado + deploy do Node a partir do GitHub, tudo num único painel, custo baixo (~US$5/mês) pro estágio atual do projeto.
 
-Assim que responder esses 5 pontos, começo a Fase 0 (scaffold do backend) direto no repo.
+Com isso, a Fase 0 (scaffold do backend) está em andamento — ver `backend/` no repo.

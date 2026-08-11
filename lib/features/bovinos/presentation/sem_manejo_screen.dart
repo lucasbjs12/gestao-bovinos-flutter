@@ -26,7 +26,7 @@ class _SemManejoScreenState extends State<SemManejoScreen> {
   }
 
   Future<void> _carregar() async {
-    final uid = context.read<AuthProvider>().currentUser?.uid;
+    final uid = context.read<AuthProvider>().fazendaId;
     if (uid == null) {
       setState(() => _carregando = false);
       return;

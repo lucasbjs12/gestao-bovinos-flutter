@@ -96,7 +96,7 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _uid = context.read<AuthProvider>().currentUser?.uid;
+      _uid = context.read<AuthProvider>().fazendaId;
       if (_uid == null || !mounted) return;
       final db = await AppDatabase.instance.instanceFor(_uid);
       final lista = await InvernadaLocalRepository(db).listar();

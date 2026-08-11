@@ -89,6 +89,18 @@ Future<Database> criarDbTeste() async {
             FOREIGN KEY (bovinoId) REFERENCES bovinos(id) ON DELETE CASCADE
           )
         ''');
+        await db.execute('''
+          CREATE TABLE pending_ops (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipo TEXT NOT NULL,
+            metodo TEXT,
+            caminho TEXT NOT NULL,
+            syncId TEXT,
+            corpo TEXT,
+            descricao TEXT,
+            criadoEm INTEGER NOT NULL
+          )
+        ''');
       },
     ),
   );

@@ -78,7 +78,7 @@ class BovinosProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-
+  /// teste
   /// Move os bovinos para uma nova invernada (null = sem invernada).
   /// Retorna os bovinos atualizados para sincronização remota.
   Future<List<Bovino>> moverParaInvernada(

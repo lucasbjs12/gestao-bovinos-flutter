@@ -46,4 +46,9 @@ class AtividadeLocalRepository {
 
   Future<void> excluirPorSyncId(String syncId) =>
       _db.delete('atividades', where: 'syncId = ?', whereArgs: [syncId]);
+
+  Future<Set<String>> listarTodosSyncIds() async {
+    final rows = await _db.query('atividades', columns: ['syncId']);
+    return rows.map((r) => r['syncId'] as String).toSet();
+  }
 }

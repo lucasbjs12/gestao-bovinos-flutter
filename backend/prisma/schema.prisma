@@ -1,0 +1,268 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StatusAssinatura {
+  pendente
+  ativo
+  bloqueado
+  vencido
+}
+
+enum Papel {
+  dono
+  convidado
+}
+
+enum CategoriaBovino {
+  Vaca
+  Novilha
+  Terneira
+  Terneiro
+  Novilho
+  Touro
+  Boi
+}
+
+enum MotivoBaixa {
+  Morte
+  Venda
+  Furto
+  Outros
+}
+
+enum TipoEventoSanitario {
+  Vacinacao
+  Vermifugacao
+  Medicacao
+  Castracao
+  Banho
+  Outros
+}
+
+model Usuario {
+  id               String           @id @default(uuid()) @db.Uuid
+  nome             String
+  email            String           @unique
+  senhaHash        String           @map("senha_hash")
+  isAdmin          Boolean          @default(false) @map("is_admin")
+  statusAssinatura StatusAssinatura @default(pendente) @map("status_assinatura")
+  plano            String?
+  vencimento       DateTime?
+  criadoEm         DateTime         @default(now()) @map("criado_em")
+
+  fazendasProprias Fazenda[]        @relation("DonoFazenda")
+  membros          Membro[]
+  refreshTokens    RefreshToken[]
+  resetTokens      PasswordResetToken[]
+  convitesCriados  Convite[]        @relation("ConviteCriadoPor")
+  convitesUsados   Convite[]        @relation("ConviteUsadoPor")
+  atividades       Atividade[]
+
+  @@map("usuarios")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  usuarioId  String    @map("usuario_id") @db.Uuid
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tokenHash  String    @map("token_hash")
+  expiraEm   DateTime  @map("expira_em")
+  revogadoEm DateTime? @map("revogado_em")
+
+  @@index([usuarioId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  usuarioId String    @map("usuario_id") @db.Uuid
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tokenHash String    @map("token_hash")
+  expiraEm  DateTime  @map("expira_em")
+  usadoEm   DateTime? @map("usado_em")
+
+  @@index([usuarioId])
+  @@map("password_reset_tokens")
+}
+
+model Fazenda {
+  id        String   @id @default(uuid()) @db.Uuid
+  donoId    String   @map("dono_id") @db.Uuid
+  dono      Usuario  @relation("DonoFazenda", fields: [donoId], references: [id])
+  nome      String
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  membros              Membro[]
+  convites             Convite[]
+  invernadas           Invernada[]
+  bovinos              Bovino[]
+  eventosSanitarios    EventoSanitario[]
+  movimentacoes        MovimentacaoInvernada[]
+  atividades           Atividade[]
+
+  @@map("fazendas")
+}
+
+model Membro {
+  fazendaId String   @map("fazenda_id") @db.Uuid
+  fazenda   Fazenda  @relation(fields: [fazendaId], references: [id], onDelete: Cascade)
+  usuarioId String   @map("usuario_id") @db.Uuid
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  papel     Papel
+  nome      String?
+  desde     DateTime @default(now())
+
+  @@id([fazendaId, usuarioId])
+  @@map("membros")
+}
+
+model Convite {
+  codigo       String    @id
+  fazendaId    String    @map("fazenda_id") @db.Uuid
+  fazenda      Fazenda   @relation(fields: [fazendaId], references: [id], onDelete: Cascade)
+  papel        Papel     @default(convidado)
+  criadoPorId  String?   @map("criado_por") @db.Uuid
+  criadoPor    Usuario?  @relation("ConviteCriadoPor", fields: [criadoPorId], references: [id])
+  criadoEm     DateTime  @default(now()) @map("criado_em")
+  expiraEm     DateTime  @map("expira_em")
+  usado        Boolean   @default(false)
+  usadoPorId   String?   @map("usado_por") @db.Uuid
+  usadoPor     Usuario?  @relation("ConviteUsadoPor", fields: [usadoPorId], references: [id])
+
+  @@map("convites")
+}
+
+model Invernada {
+  id           String   @id @default(uuid()) @db.Uuid
+  fazendaId    String   @map("fazenda_id") @db.Uuid
+  fazenda      Fazenda  @relation(fields: [fazendaId], references: [id], onDelete: Cascade)
+  descricao    String
+  hectares     Decimal? @db.Decimal(10, 2)
+  urlFoto      String?  @map("url_foto")
+  observacoes  String?
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em")
+
+  bovinos                    Bovino[]
+  eventosSanitarios          EventoSanitario[]
+  movimentacoesComoOrigem    MovimentacaoInvernada[] @relation("InvernadaAnterior")
+  movimentacoesComoDestino   MovimentacaoInvernada[] @relation("NovaInvernada")
+
+  @@index([fazendaId])
+  @@map("invernadas")
+}
+
+model Bovino {
+  id             String          @id @default(uuid()) @db.Uuid
+  fazendaId      String          @map("fazenda_id") @db.Uuid
+  fazenda        Fazenda         @relation(fields: [fazendaId], references: [id], onDelete: Cascade)
+  nomeAnimal     String?         @map("nome_animal")
+  codigoEpc      String?         @map("codigo_epc")
+  codigoInterno  String?         @map("codigo_interno")
+  numeroBrinco   String          @map("numero_brinco")
+  raca           String?
+  dataNascimento DateTime?       @map("data_nascimento") @db.Date
+  pesoAtualKg    Decimal?        @map("peso_atual_kg") @db.Decimal(8, 2)
+  pelagem        String?
+  categoria      CategoriaBovino
+  status         String          @default("Ativo")
+  origem         String?
+  observacoes    String?
+  foto           String?
+  invernadaId    String?         @map("invernada_id") @db.Uuid
+  invernada      Invernada?      @relation(fields: [invernadaId], references: [id], onDelete: SetNull)
+  idMae          String?         @map("id_mae") @db.Uuid
+  mae            Bovino?         @relation("MaeFilho", fields: [idMae], references: [id], onDelete: SetNull)
+  filhos         Bovino[]        @relation("MaeFilho")
+  estaDeCria     Boolean         @default(false) @map("esta_de_cria")
+  atualizadoEm   DateTime        @default(now()) @updatedAt @map("atualizado_em")
+
+  baixas                  BaixaBovino[]
+  eventosSanitarios       EventoSanitarioBovino[]
+  movimentacoes           MovimentacaoInvernada[]
+
+  @@index([fazendaId, numeroBrinco])
+  @@index([invernadaId])
+  @@index([idMae])
+  @@map("bovinos")
+}
+
+model BaixaBovino {
+  id          String      @id @default(uuid()) @db.Uuid
+  bovinoId    String      @map("bovino_id") @db.Uuid
+  bovino      Bovino      @relation(fields: [bovinoId], references: [id], onDelete: Cascade)
+  motivo      MotivoBaixa
+  observacoes String?
+  dataBaixa   DateTime    @map("data_baixa") @db.Date
+
+  @@index([bovinoId])
+  @@map("baixas_bovinos")
+}
+
+model MovimentacaoInvernada {
+  id                  String     @id @default(uuid()) @db.Uuid
+  fazendaId           String     @map("fazenda_id") @db.Uuid
+  fazenda             Fazenda    @relation(fields: [fazendaId], references: [id], onDelete: Cascade)
+  bovinoId            String     @map("bovino_id") @db.Uuid
+  bovino              Bovino     @relation(fields: [bovinoId], references: [id], onDelete: Cascade)
+  data                DateTime   @db.Date
+  invernadaAnteriorId String?    @map("invernada_anterior_id") @db.Uuid
+  invernadaAnterior   Invernada? @relation("InvernadaAnterior", fields: [invernadaAnteriorId], references: [id])
+  novaInvernadaId     String?    @map("nova_invernada_id") @db.Uuid
+  novaInvernada       Invernada? @relation("NovaInvernada", fields: [novaInvernadaId], references: [id])
+  responsavel         String?
+  observacoes         String?
+
+  @@index([fazendaId])
+  @@index([bovinoId])
+  @@map("movimentacoes_invernada")
+}
+
+model EventoSanitario {
+  id                String              @id @default(uuid()) @db.Uuid
+  fazendaId         String              @map("fazenda_id") @db.Uuid
+  fazenda           Fazenda             @relation(fields: [fazendaId], references: [id], onDelete: Cascade)
+  tipo              TipoEventoSanitario
+  dataEvento        DateTime?           @map("data_evento") @db.Date
+  invernadaId       String?             @map("invernada_id") @db.Uuid
+  invernada         Invernada?          @relation(fields: [invernadaId], references: [id])
+  produtoUtilizado  String?             @map("produto_utilizado")
+  dosagem           String?
+  responsavel       String?
+  observacoes       String?
+
+  bovinos EventoSanitarioBovino[]
+
+  @@index([fazendaId])
+  @@map("eventos_sanitarios")
+}
+
+model EventoSanitarioBovino {
+  eventoId String          @map("evento_id") @db.Uuid
+  evento   EventoSanitario @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  bovinoId String          @map("bovino_id") @db.Uuid
+  bovino   Bovino          @relation(fields: [bovinoId], references: [id], onDelete: Cascade)
+
+  @@id([eventoId, bovinoId])
+  @@map("evento_sanitario_bovino")
+}
+
+model Atividade {
+  id        String   @id @default(uuid()) @db.Uuid
+  fazendaId String   @map("fazenda_id") @db.Uuid
+  fazenda   Fazenda  @relation(fields: [fazendaId], references: [id], onDelete: Cascade)
+  autorId   String   @map("autor_id") @db.Uuid
+  autor     Usuario  @relation(fields: [autorId], references: [id])
+  autorNome String?  @map("autor_nome")
+  acao      String
+  descricao String
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  @@index([fazendaId, criadoEm(sort: Desc)])
+  @@map("atividades")
+}

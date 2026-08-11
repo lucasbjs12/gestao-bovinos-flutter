@@ -146,30 +146,6 @@ class _PainelAdminScreenState extends State<PainelAdminScreen> {
     await _carregar();
   }
 
-  Future<void> _toggleAdmin(UsuarioAssinatura u) async {
-    final acao = u.isAdmin ? 'remover admin de' : 'tornar admin';
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('${u.isAdmin ? 'Remover' : 'Promover'} admin'),
-        content: Text('Deseja $acao ${u.nome}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirmar'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
-    await AssinaturaService.toggleAdmin(u.uid, !u.isAdmin);
-    await _carregar();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -222,7 +198,6 @@ class _PainelAdminScreenState extends State<PainelAdminScreen> {
                         usuario: _filtrados[i],
                         onAtivar: () => _abrirAtivar(_filtrados[i]),
                         onBloquear: () => _bloquear(_filtrados[i]),
-                        onToggleAdmin: () => _toggleAdmin(_filtrados[i]),
                       ),
                     ),
                   ),
@@ -237,13 +212,11 @@ class _UsuarioCard extends StatelessWidget {
   final UsuarioAssinatura usuario;
   final VoidCallback onAtivar;
   final VoidCallback onBloquear;
-  final VoidCallback onToggleAdmin;
 
   const _UsuarioCard({
     required this.usuario,
     required this.onAtivar,
     required this.onBloquear,
-    required this.onToggleAdmin,
   });
 
   @override
@@ -365,16 +338,8 @@ class _UsuarioCard extends StatelessWidget {
                     onTap: onBloquear,
                   ),
                 const Spacer(),
-                IconButton(
-                  tooltip: u.isAdmin ? 'Remover admin' : 'Tornar admin',
-                  icon: Icon(
-                    u.isAdmin ? Icons.shield : Icons.shield_outlined,
-                    size: 20,
-                    color: u.isAdmin ? cs.primary : cs.onSurfaceVariant,
-                  ),
-                  onPressed: onToggleAdmin,
-                  visualDensity: VisualDensity.compact,
-                ),
+                if (u.isAdmin)
+                  Icon(Icons.shield, size: 20, color: cs.primary),
               ],
             ),
           ],

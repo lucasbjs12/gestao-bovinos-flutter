@@ -86,6 +86,11 @@ class InvernadaLocalRepository {
   Future<void> excluirPorSyncId(String syncId) =>
       _db.delete('invernadas', where: 'syncId = ?', whereArgs: [syncId]);
 
+  Future<Set<String>> listarTodosSyncIds() async {
+    final rows = await _db.query('invernadas', columns: ['syncId']);
+    return rows.map((r) => r['syncId'] as String).toSet();
+  }
+
   /// Move [bovinoIds] para [novaInvernadaId] (null = sem invernada).
   /// Registra uma movimentação por bovino e retorna os bovinos atualizados.
   Future<List<Bovino>> moverBovinos({

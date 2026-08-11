@@ -1,9 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
+import '../../../core/api/api_client.dart';
+import '../../../core/api/api_exception.dart';
 import '../../../core/db/app_database.dart';
+import '../../../core/sync/outbox.dart';
 import '../../../core/sync/sync_refs.dart';
 import '../../../core/sync/sync_status_service.dart';
-import '../../atividades/atividade_service.dart';
+import '../../../core/utils/data_iso.dart';
 import '../../bovinos/data/bovino.dart';
 import '../../bovinos/data/bovino_remote_repository.dart';
 import 'invernada.dart';
@@ -12,100 +13,99 @@ import 'movimentacao_invernada.dart';
 class InvernadaRemoteRepository {
   final String uid;
   final SyncStatusService _sync;
-  final FirebaseFirestore _db;
+  final ApiClient _api;
 
-  InvernadaRemoteRepository({required this.uid, required this._sync})
-      : _db = FirebaseFirestore.instance;
+  // O campo é privado (_sync) mas o parâmetro precisa ficar público (sync)
+  // pra quem chama de fora do arquivo, então não dá pra usar `this._sync`.
+  InvernadaRemoteRepository({
+    required this.uid,
+    required SyncStatusService sync,
+    ApiClient? apiClient,
+  }) : _sync = sync, // ignore: prefer_initializing_formals
+       _api = apiClient ?? ApiClient();
 
-  CollectionReference<Map<String, dynamic>> get _col =>
-      _db.collection('fazendas').doc(uid).collection('invernadas');
+  String get _base => '/fazendas/$uid/invernadas';
 
-  CollectionReference<Map<String, dynamic>> get _colMov =>
-      _db.collection('fazendas').doc(uid).collection('movimentacoes');
-
-  void salvar(Invernada i) {
-    _col.doc(i.syncId).set({
-      'id': i.id,
-      'syncId': i.syncId,
+  Future<void> salvar(Invernada i) async {
+    final corpo = {
       'descricao': i.descricao,
       'hectares': i.hectares,
       'urlFoto': i.urlFoto,
       'observacoes': i.observacoes,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    _sync.notificarEscrita();
-    AtividadeService.registrar(
-      uid: uid,
-      sync: _sync,
-      acao: 'invernada_salva',
-      descricao: 'Salvou a invernada ${i.descricao}',
-    );
+    };
+    try {
+      try {
+        await _api.put('$_base/${i.syncId}', corpo: corpo);
+      } on ApiException catch (e) {
+        if (e.statusCode != 404) rethrow;
+        await _api.post(_base, corpo: {...corpo, 'id': i.syncId});
+      }
+      _sync.notificarEscrita();
+    } catch (_) {
+      final db = await AppDatabase.instance.instanceFor(uid);
+      final outbox = Outbox(db);
+      await outbox.enfileirarUpsert(
+        caminhoBase: _base,
+        syncId: i.syncId,
+        corpo: corpo,
+        descricao: 'Invernada ${i.descricao}',
+      );
+      await outbox.avisar(_sync);
+    }
   }
 
   /// Exclui a invernada e re-salva os bovinos afetados com invernadaId = null.
-  void excluirComBovinos(String syncId, List<Bovino> bovinosAfetados) {
-    _col.doc(syncId).delete();
-    final bovinoRepo = BovinoRemoteRepository(uid: uid, sync: _sync);
-    for (final b in bovinosAfetados) {
-      // efeito colateral da exclusão — não polui o diário
-      bovinoRepo.salvar(b, registrarAtividade: false);
+  Future<void> excluirComBovinos(String syncId, List<Bovino> bovinosAfetados) async {
+    try {
+      await _api.delete('$_base/$syncId');
+      final bovinoRepo = BovinoRemoteRepository(uid: uid, sync: _sync);
+      for (final b in bovinosAfetados) {
+        await bovinoRepo.salvar(b, registrarAtividade: false);
+      }
+      _sync.notificarEscrita();
+    } catch (_) {
+      final db = await AppDatabase.instance.instanceFor(uid);
+      final outbox = Outbox(db);
+      await outbox.enfileirarChamada(
+        metodo: 'DELETE',
+        caminho: '$_base/$syncId',
+        descricao: 'Excluir invernada',
+      );
+      await outbox.avisar(_sync);
+      // Os bovinos afetados já foram atualizados localmente; a próxima
+      // rodada de sync/edição individual reenvia cada um deles.
     }
-    _sync.notificarEscrita();
-    AtividadeService.registrar(
-      uid: uid,
-      sync: _sync,
-      acao: 'invernada_excluida',
-      descricao: 'Excluiu uma invernada '
-          '(${bovinosAfetados.length} animais ficaram sem invernada)',
-    );
   }
 
+  /// Registra a movimentação no backend (que já atualiza o invernadaId do
+  /// bovino do lado do servidor -- diferente do Firestore, aqui não precisa
+  /// salvar o bovino de novo separadamente).
   Future<void> salvarMovimentacao(MovimentacaoInvernada m, int localId) async {
+    if (m.novaInvernadaId == null) return; // backend exige destino não-nulo
     final db = await AppDatabase.instance.instanceFor(uid);
     final bovinoSyncId = await SyncRefs.syncIdPorId(db, 'bovinos', m.bovinoId);
-    final anteriorSyncId =
-        await SyncRefs.syncIdPorId(db, 'invernadas', m.invernadaAnteriorId);
-    final novaSyncId =
-        await SyncRefs.syncIdPorId(db, 'invernadas', m.novaInvernadaId);
+    final novaSyncId = await SyncRefs.syncIdPorId(db, 'invernadas', m.novaInvernadaId);
+    if (bovinoSyncId == null || novaSyncId == null) return;
 
-    _colMov.doc(localId.toString()).set({
-      'id': localId,
-      'bovinoId': m.bovinoId,
-      'bovinoSyncId': bovinoSyncId,
-      'data': m.data,
-      'invernadaAnteriorId': m.invernadaAnteriorId,
-      'invernadaAnteriorSyncId': anteriorSyncId,
-      'novaInvernadaId': m.novaInvernadaId,
-      'novaInvernadaSyncId': novaSyncId,
+    final corpo = {
+      'bovinoId': bovinoSyncId,
+      'novaInvernadaId': novaSyncId,
+      'data': dataBrParaIso(m.data),
       'responsavel': m.responsavel,
       'observacoes': m.observacoes,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    _sync.notificarEscrita();
-
-    final brincoRows = await db.query(
-      'bovinos',
-      columns: ['numeroBrinco'],
-      where: 'id = ?',
-      whereArgs: [m.bovinoId],
-    );
-    final destinoRows = await db.query(
-      'invernadas',
-      columns: ['descricao'],
-      where: 'id = ?',
-      whereArgs: [m.novaInvernadaId],
-    );
-    final brinco = brincoRows.isEmpty
-        ? 'um bovino'
-        : 'o brinco ${brincoRows.first['numeroBrinco']}';
-    final destino = destinoRows.isEmpty
-        ? 'sem invernada'
-        : '${destinoRows.first['descricao']}';
-    await AtividadeService.registrar(
-      uid: uid,
-      sync: _sync,
-      acao: 'movimentacao',
-      descricao: 'Moveu $brinco para $destino',
-    );
+    };
+    try {
+      await _api.post('/fazendas/$uid/movimentacoes', corpo: corpo);
+      _sync.notificarEscrita();
+    } catch (_) {
+      final outbox = Outbox(db);
+      await outbox.enfileirarChamada(
+        metodo: 'POST',
+        caminho: '/fazendas/$uid/movimentacoes',
+        corpo: corpo,
+        descricao: 'Movimentação de bovino',
+      );
+      await outbox.avisar(_sync);
+    }
   }
 }

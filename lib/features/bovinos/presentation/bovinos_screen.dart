@@ -8,6 +8,7 @@ import '../../../core/db/app_database.dart';
 import '../../../core/widgets/marca_painter.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/sync/sync_status_service.dart';
+import '../../atividades/atividade_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../invernadas/data/invernada.dart';
 import '../../invernadas/data/invernada_local_repository.dart';
@@ -47,7 +48,7 @@ class _BovinosScreenState extends State<BovinosScreen> {
   }
 
   void _carregar() {
-    final uid = context.read<AuthProvider>().currentUser?.uid;
+    final uid = context.read<AuthProvider>().fazendaId;
     if (uid != null) context.read<BovinosProvider>().carregar(uid);
   }
 
@@ -159,7 +160,7 @@ class _BovinosScreenState extends State<BovinosScreen> {
   }
 
   Future<void> _moverInvernadaSelecionados() async {
-    final uid = context.read<AuthProvider>().currentUser?.uid;
+    final uid = context.read<AuthProvider>().fazendaId;
     if (uid == null) return;
 
     final resultado = await showModalBottomSheet<({Invernada? invernada, bool confirmou})>(
@@ -184,18 +185,27 @@ class _BovinosScreenState extends State<BovinosScreen> {
     final bovinosAtualizados = await provider.moverParaInvernada(
       ids, resultado.invernada?.id);
 
-    // Fire-and-forget sync para Firestore
+    // Fire-and-forget sync para Firestore. A atividade é registrada uma vez
+    // só, com a contagem certa, em vez de um "salvou o bovino" por animal.
     final remoto = BovinoRemoteRepository(uid: uid, sync: syncSvc);
     for (final b in bovinosAtualizados) {
-      remoto.salvar(b);
+      remoto.salvar(b, registrarAtividade: false);
     }
+    final destino = resultado.invernada?.descricao ?? 'Sem invernada';
+    final n = bovinosAtualizados.length;
+    AtividadeService.registrar(
+      uid: uid,
+      sync: syncSvc,
+      acao: 'bovino_movido',
+      descricao: 'Moveu $n animal${n > 1 ? 'is' : ''} para $destino',
+    );
 
     if (mounted) provider.recarregar();
   }
 
   Future<void> _confirmarBaixaEmLote() async {
     final count = _selecionados.length;
-    String motivoSelecionado = 'Vendido';
+    String motivoSelecionado = 'Venda';
 
     final confirm = await showDialog<bool>(
       context: context,
@@ -216,10 +226,10 @@ class _BovinosScreenState extends State<BovinosScreen> {
                   isDense: true,
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'Vendido', child: Text('Vendido')),
-                  DropdownMenuItem(value: 'Abatido', child: Text('Abatido')),
+                  DropdownMenuItem(value: 'Venda', child: Text('Venda')),
                   DropdownMenuItem(value: 'Morte', child: Text('Morte')),
-                  DropdownMenuItem(value: 'Outro', child: Text('Outro')),
+                  DropdownMenuItem(value: 'Furto', child: Text('Furto')),
+                  DropdownMenuItem(value: 'Outros', child: Text('Outros')),
                 ],
                 onChanged: (v) =>
                     setDlgState(() => motivoSelecionado = v ?? motivoSelecionado),
@@ -485,6 +495,7 @@ class _BovinosScreenState extends State<BovinosScreen> {
                 onEvento: _criarEventoParaSelecionados,
                 onMover: _moverInvernadaSelecionados,
                 onBaixa: _confirmarBaixaEmLote,
+                mostrarBaixa: context.watch<AuthProvider>().souDono,
               )
             : null,
 
@@ -889,12 +900,14 @@ class _BatchActionBar extends StatelessWidget {
   final VoidCallback onEvento;
   final VoidCallback onMover;
   final VoidCallback onBaixa;
+  final bool mostrarBaixa;
 
   const _BatchActionBar({
     required this.count,
     required this.onEvento,
     required this.onMover,
     required this.onBaixa,
+    required this.mostrarBaixa,
   });
 
   @override
@@ -946,21 +959,25 @@ class _BatchActionBar extends StatelessWidget {
             label: const Text('Mover',
                 style: TextStyle(fontWeight: FontWeight.w600)),
           ),
-          const SizedBox(width: 8),
-          OutlinedButton.icon(
-            onPressed: onBaixa,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: cs.error,
-              side: BorderSide(color: cs.error.withValues(alpha: 0.6)),
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          if (mostrarBaixa) ...[
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: onBaixa,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: cs.error,
+                side: BorderSide(color: cs.error.withValues(alpha: 0.6)),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
+              icon:
+                  Icon(Icons.arrow_downward_rounded, size: 18, color: cs.error),
+              label: Text('Baixa',
+                  style: TextStyle(color: cs.error, fontWeight: FontWeight.w600)),
             ),
-            icon: Icon(Icons.arrow_downward_rounded, size: 18, color: cs.error),
-            label: Text('Baixa',
-                style: TextStyle(color: cs.error, fontWeight: FontWeight.w600)),
-          ),
+          ],
         ],
       ),
     );
