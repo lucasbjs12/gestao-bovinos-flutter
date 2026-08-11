@@ -15,7 +15,7 @@ export function criarApp(): Express {
   // CSP desligada: API pura JSON consumida pelo app Flutter (CSP e uma protecao
   // de navegador) + evita bloquear os scripts inline do Swagger UI em /docs.
   app.use(helmet({ contentSecurityPolicy: false }));
-  app.use(cors({ origin: env.corsOrigin }));
+  app.use(cors({ origin: env.corsOrigins }));
   app.use(express.json());
   app.use(pinoHttp({ logger }));
 

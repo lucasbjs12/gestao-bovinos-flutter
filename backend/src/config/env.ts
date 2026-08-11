@@ -17,7 +17,10 @@ export const env = {
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? "15m",
     refreshExpiresInDays: Number(process.env.JWT_REFRESH_EXPIRES_IN_DAYS ?? 30),
   },
-  corsOrigin: process.env.CORS_ORIGIN ?? "*",
+  // Aceita uma ou mais origens separadas por virgula (ex: dominio raiz e
+  // www, que sao origens distintas para o navegador mesmo com um
+  // redirecionando pro outro).
+  corsOrigins: (process.env.CORS_ORIGIN ?? "*").split(",").map((o) => o.trim()),
   frontendUrl: process.env.FRONTEND_URL ?? "http://localhost:3001",
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
