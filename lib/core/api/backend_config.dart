@@ -2,16 +2,19 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-/// Endereco do backend proprio (Node/Express + PostgreSQL).
+/// Endereco do backend proprio (Node/Express + PostgreSQL), hospedado no
+/// Render.
 ///
 /// Nao existe um padrao de config no projeto ainda (sem .env, sem
-/// --dart-define) -- por enquanto e uma constante simples, trocada aqui
-/// quando o deploy no Railway estiver pronto (ver backend/README.md).
+/// --dart-define) -- por enquanto e uma constante simples. Quando
+/// `api.gestaobovinos.com.br` estiver com o DNS propagado, troque
+/// `_producao` para usar o dominio proprio em vez do `.onrender.com`.
 class BackendConfig {
   BackendConfig._();
 
-  /// Base da API, sem barra no final. Troque para a URL do Railway em
-  /// producao (ex: `https://gestaobovinos-backend.up.railway.app/api/v1`).
+  static const _producao = 'https://gestao-bovinos-flutter.onrender.com/api/v1';
+
+  /// Base da API, sem barra no final.
   ///
   /// Em dev local, `localhost` só funciona quando o app roda no mesmo host
   /// do backend (web, Windows/macOS/Linux desktop, iOS Simulator). O
@@ -20,9 +23,13 @@ class BackendConfig {
   /// iOS) precisa do IP de LAN do PC (ex. 192.168.x.x), que nenhuma dessas
   /// constantes cobre -- troque manualmente aqui se for testar em aparelho.
   static String get baseUrl {
-    if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:3000/api/v1';
+    const usarBackendLocal = bool.fromEnvironment('USAR_BACKEND_LOCAL');
+    if (usarBackendLocal) {
+      if (!kIsWeb && Platform.isAndroid) {
+        return 'http://10.0.2.2:3000/api/v1';
+      }
+      return 'http://localhost:3000/api/v1';
     }
-    return 'http://localhost:3000/api/v1';
+    return _producao;
   }
 }
