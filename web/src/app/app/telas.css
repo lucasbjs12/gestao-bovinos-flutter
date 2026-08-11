@@ -1,0 +1,174 @@
+/* Screenshots page — scoped under .telas, same pattern as landing.css. */
+
+.telas {
+  --white: var(--surface);
+  font-family: "Inter", -apple-system, sans-serif;
+  background: var(--cream);
+  color: var(--text);
+  overflow-x: hidden;
+}
+.telas *, .telas *::before, .telas *::after { box-sizing: border-box; }
+
+.telas .nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  padding: 22px 48px;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: all .4s cubic-bezier(.4,0,.2,1);
+}
+.telas .nav.solid {
+  background: rgba(4,16,10,.94);
+  backdrop-filter: blur(24px) saturate(1.5);
+  padding: 14px 48px;
+  box-shadow: 0 1px 0 rgba(255,255,255,.06);
+}
+.telas .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.telas .nav-logo img { width: 38px; height: 38px; border-radius: 10px; }
+.telas .nav-logo-name { font-size: 15px; font-weight: 700; color: #fff; }
+.telas .nav-links { display: flex; align-items: center; gap: 36px; }
+.telas .nav-links a { color: rgba(255,255,255,.6); font-size: 14px; font-weight: 500; text-decoration: none; transition: color .2s; }
+.telas .nav-links a:hover { color: #fff; }
+.telas .nav-cta {
+  background: var(--gold) !important; color: var(--forest) !important;
+  font-weight: 700 !important; padding: 10px 22px; border-radius: 100px;
+  transition: all .2s !important;
+}
+.telas .nav-cta:hover { background: var(--gold-lt) !important; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(200,168,75,.4); }
+@media(max-width:768px){ .telas .nav-links { display: none; } .telas .nav { padding: 18px 24px; } .telas .nav.solid { padding: 12px 24px; } }
+
+.telas .page-hero {
+  min-height: 52vh;
+  background:
+    radial-gradient(ellipse 60% 80% at 20% 50%, rgba(42,107,51,.28) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 80% 30%, rgba(76,175,80,.12) 0%, transparent 60%),
+    linear-gradient(165deg, #030b04 0%, var(--forest) 40%, #071c09 100%);
+  display: flex; align-items: center; justify-content: center;
+  padding: 140px 48px 90px;
+  position: relative; overflow: hidden; text-align: center;
+}
+.telas .hero-grid {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,.04) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+}
+.telas .page-hero-inner { max-width: 720px; position: relative; }
+.telas .ph-pill {
+  display: inline-flex; align-items: center; gap: 8px; margin-bottom: 28px;
+  background: rgba(200,168,75,.1); border: 1px solid rgba(200,168,75,.25);
+  color: var(--gold); font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .12em; padding: 7px 18px; border-radius: 100px;
+}
+.telas .ph-pill span { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); display: inline-block; animation: telas-blink 1.8s ease-in-out infinite; }
+@keyframes telas-blink { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+.telas .page-hero h1 {
+  font-size: clamp(2.2rem, 5.5vw, 3.8rem); font-weight: 900;
+  color: #fff; letter-spacing: -.03em; line-height: 1.08; margin-bottom: 20px;
+}
+.telas .page-hero h1 em { font-style: normal; color: var(--gold); }
+.telas .page-hero p { color: rgba(255,255,255,.55); font-size: 18px; line-height: 1.75; }
+@media(max-width:600px){ .telas .page-hero { padding: 120px 24px 70px; } .telas .page-hero p { font-size: 16px; } }
+
+.telas .screens-sec { padding: 90px 48px 110px; background: var(--cream); }
+.telas .screens-sec-inner { max-width: 1200px; margin: 0 auto; }
+
+.telas .screens-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 48px 36px;
+}
+@media(max-width:960px){ .telas .screens-grid { grid-template-columns: repeat(2, 1fr); gap: 40px 28px; } }
+@media(max-width:560px){ .telas .screens-grid { grid-template-columns: 1fr; gap: 48px; } }
+
+.telas .sc-card { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+
+.telas .phone-frame {
+  width: 100%; max-width: 260px;
+  aspect-ratio: 9/19.5;
+  background: #0d1f0f;
+  border-radius: 38px;
+  border: 6px solid #1c3820;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.06),
+    0 32px 80px rgba(0,0,0,.35),
+    inset 0 1px 0 rgba(255,255,255,.07);
+  overflow: hidden;
+  position: relative;
+}
+.telas .phone-frame::before {
+  content: '';
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  width: 72px; height: 20px;
+  background: #0d1f0f;
+  border-radius: 0 0 14px 14px;
+  z-index: 2;
+}
+.telas .phone-frame::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,.06) 0%, transparent 50%);
+  z-index: 3; border-radius: inherit;
+}
+.telas .phone-screen { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+
+.telas .sc-info { text-align: center; }
+.telas .sc-num {
+  display: inline-block; margin-bottom: 10px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--g800); color: var(--g400);
+  font-size: 12px; font-weight: 700; line-height: 28px; text-align: center;
+}
+.telas .sc-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.telas .sc-desc  { font-size: 14px; color: var(--muted); line-height: 1.65; max-width: 230px; margin: 0 auto; }
+
+.telas .r { opacity: 0; transform: translateY(36px); transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1); }
+.telas .r.in { opacity: 1; transform: none; }
+
+.telas .app-cta {
+  padding: 80px 48px;
+  text-align: center;
+  background: linear-gradient(160deg, #03090a 0%, #071608 45%, #0a2410 100%);
+  position: relative; overflow: hidden;
+}
+.telas .app-cta::before {
+  content: ''; position: absolute;
+  width: 600px; height: 600px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(76,175,80,.09) 0%, transparent 70%);
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
+}
+.telas .app-cta-in { max-width: 580px; margin: 0 auto; position: relative; }
+.telas .app-cta h2 { color: #fff; font-size: clamp(1.8rem,4vw,3rem); font-weight: 900; letter-spacing: -.03em; margin-bottom: 16px; }
+.telas .app-cta p  { color: rgba(255,255,255,.5); font-size: 17px; line-height: 1.75; margin-bottom: 36px; }
+.telas .btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--gold); color: var(--forest);
+  font-weight: 700; font-size: 15px; padding: 14px 30px;
+  border-radius: 100px; text-decoration: none;
+  transition: all .2s;
+  box-shadow: 0 8px 28px rgba(200,168,75,.35);
+  border: none; cursor: pointer; font-family: inherit;
+}
+.telas .btn-primary:hover { background: var(--gold-lt); transform: translateY(-2px); box-shadow: 0 14px 40px rgba(200,168,75,.45); }
+.telas .btn-ghost {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1.5px solid rgba(255,255,255,.18); color: rgba(255,255,255,.75);
+  font-weight: 600; font-size: 15px; padding: 14px 30px;
+  border-radius: 100px; text-decoration: none;
+  transition: all .2s;
+}
+.telas .btn-ghost:hover { border-color: rgba(255,255,255,.45); color: #fff; }
+.telas .cta-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+.telas .telas-footer { background: #020904; color: rgba(255,255,255,.42); padding: 68px 48px 42px; }
+.telas .ft-in { max-width: 1120px; margin: 0 auto; }
+.telas .ft-top { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 64px; margin-bottom: 52px; }
+@media(max-width:680px){ .telas .ft-top { grid-template-columns: 1fr; gap: 36px; } }
+.telas .ft-brand { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
+.telas .ft-brand img { width: 38px; height: 38px; border-radius: 10px; }
+.telas .ft-brand-n { color: #fff; font-size: 15px; font-weight: 700; }
+.telas .ft-tag { font-size: 13.5px; line-height: 1.75; max-width: 320px; }
+.telas .ft-col-h { color: rgba(255,255,255,.72); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 18px; }
+.telas .ft-links { list-style: none; display: flex; flex-direction: column; gap: 11px; }
+.telas .ft-links a { color: rgba(255,255,255,.38); font-size: 14px; text-decoration: none; transition: color .2s; }
+.telas .ft-links a:hover { color: rgba(255,255,255,.85); }
+.telas .ft-bot { border-top: 1px solid rgba(255,255,255,.055); padding-top: 28px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; font-size: 12.5px; }
+.telas .lgpd { background: rgba(76,175,80,.1); border: 1px solid rgba(76,175,80,.2); color: var(--g400); font-size: 11px; font-weight: 600; padding: 5px 13px; border-radius: 100px; }

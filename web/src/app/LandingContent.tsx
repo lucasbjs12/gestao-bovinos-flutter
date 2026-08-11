@@ -38,6 +38,14 @@ const FAQ = [
   },
 ];
 
+function scrollToSection(id: string) {
+  return (e: React.MouseEvent) => {
+    e.preventDefault();
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    history.replaceState(null, "", `#${id}`);
+  };
+}
+
 export default function LandingContent() {
   const { user } = useAuth();
   const painelHref = user ? "/inicio" : "/login";
@@ -125,9 +133,10 @@ export default function LandingContent() {
           <span className="nav-logo-name">Gestão de Rebanho</span>
         </a>
         <div className="nav-links">
-          <a href="#features">Funcionalidades</a>
-          <a href="#how">Como funciona</a>
-          <a href="#privacy">Privacidade</a>
+          <a href="#features" onClick={scrollToSection("features")}>Funcionalidades</a>
+          <a href="#how" onClick={scrollToSection("how")}>Como funciona</a>
+          <Link href="/app">Ver o app</Link>
+          <a href="#privacy" onClick={scrollToSection("privacy")}>Privacidade</a>
           <Link href={painelHref} className="nav-cta">
             Acessar Painel
           </Link>
@@ -174,7 +183,7 @@ export default function LandingContent() {
                 </svg>
                 Acessar Painel
               </Link>
-              <a href="#how" className="btn-ghost">
+              <a href="#how" className="btn-ghost" onClick={scrollToSection("how")}>
                 Ver como funciona
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M12 5v14M5 12l7 7 7-7" />
@@ -411,7 +420,7 @@ export default function LandingContent() {
               </svg>
               Acessar Painel Web
             </Link>
-            <a href="#features" className="btn-ghost">Ver funcionalidades</a>
+            <a href="#features" className="btn-ghost" onClick={scrollToSection("features")}>Ver funcionalidades</a>
           </div>
         </div>
       </section>
@@ -433,18 +442,19 @@ export default function LandingContent() {
             <div>
               <div className="ft-col-h">Navegação</div>
               <ul className="ft-links">
-                <li><a href="#features">Funcionalidades</a></li>
-                <li><a href="#how">Como funciona</a></li>
-                <li><a href="#privacy">Privacidade</a></li>
+                <li><a href="#features" onClick={scrollToSection("features")}>Funcionalidades</a></li>
+                <li><a href="#how" onClick={scrollToSection("how")}>Como funciona</a></li>
+                <li><Link href="/app">Ver o app</Link></li>
+                <li><a href="#privacy" onClick={scrollToSection("privacy")}>Privacidade</a></li>
                 <li><Link href={painelHref}>Painel Web</Link></li>
               </ul>
             </div>
             <div>
               <div className="ft-col-h">Legal</div>
               <ul className="ft-links">
-                <li><a href="#privacy">Política de Privacidade</a></li>
-                <li><a href="#privacy">Termos de Uso</a></li>
-                <li><a href="#privacy">LGPD</a></li>
+                <li><a href="#privacy" onClick={scrollToSection("privacy")}>Política de Privacidade</a></li>
+                <li><a href="#privacy" onClick={scrollToSection("privacy")}>Termos de Uso</a></li>
+                <li><a href="#privacy" onClick={scrollToSection("privacy")}>LGPD</a></li>
               </ul>
             </div>
           </div>
