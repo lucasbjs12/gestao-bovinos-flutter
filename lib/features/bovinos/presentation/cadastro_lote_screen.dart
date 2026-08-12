@@ -267,7 +267,7 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
         String? fotoFinal = item.fotoPath;
         if (item.fotoFile != null) {
           try {
-            fotoFinal = await CloudinaryService.upload(item.fotoFile!);
+            fotoFinal = await CloudinaryService.upload(item.fotoFile!, fazendaId: _uid!);
           } catch (_) {}
         }
 

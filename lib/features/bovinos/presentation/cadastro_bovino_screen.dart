@@ -179,7 +179,7 @@ static const _statusOpcoes = ['Ativo', 'Em quarentena'];
       String? fotoFinal;
       if (_fotoLocal != null) {
         try {
-          fotoFinal = await CloudinaryService.upload(_fotoLocal!);
+          fotoFinal = await CloudinaryService.upload(_fotoLocal!, fazendaId: _uid!);
         } catch (_) {
           fotoFinal = await PhotoService.saveCompressed(_fotoLocal!, _uid!);
         }

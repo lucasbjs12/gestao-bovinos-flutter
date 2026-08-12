@@ -1,26 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:http/http.dart' as http;
 
-/// Upload assinado: a assinatura é gerada pela Cloud Function
-/// `assinarUploadCloudinary`, que exige usuário logado. O API secret
-/// do Cloudinary nunca fica no app.
+import '../api/api_client.dart';
+
+/// Upload assinado: a assinatura é gerada pelo backend próprio
+/// (`GET /fazendas/:fazendaId/upload/assinar`), que exige usuário
+/// autenticado. O API secret do Cloudinary nunca fica no app.
 class CloudinaryService {
-  static const _cloudName = 'duseg2d1m';
+  static Future<String> upload(File file, {required String fazendaId, ApiClient? apiClient}) async {
+    final client = apiClient ?? ApiClient();
+    final assinatura = await client.get('/fazendas/$fazendaId/uploads/assinar') as Map<String, dynamic>;
 
-  static Future<String> upload(File file) async {
-    final callable = FirebaseFunctions.instanceFor(
-      region: 'southamerica-east1',
-    ).httpsCallable('assinarUploadCloudinary');
-
-    final res = await callable.call().timeout(const Duration(seconds: 30));
-    final assinatura = Map<String, dynamic>.from(res.data as Map);
-
-    final uri = Uri.parse(
-      'https://api.cloudinary.com/v1_1/$_cloudName/image/upload',
-    );
+    final uri = Uri.parse(assinatura['uploadUrl'] as String);
     final request = http.MultipartRequest('POST', uri)
       ..fields['api_key'] = assinatura['apiKey'] as String
       ..fields['timestamp'] = '${assinatura['timestamp']}'
