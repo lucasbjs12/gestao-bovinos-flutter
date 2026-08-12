@@ -12,14 +12,23 @@ import type {
   RedefinirSenhaInput,
   RefreshInput,
   RegistroInput,
+  VerificarEmailInput,
 } from "../dtos/auth.dto";
 
-function usuarioPublico(usuario: { id: string; nome: string; email: string; isAdmin: boolean; statusAssinatura: string }) {
+function usuarioPublico(usuario: {
+  id: string;
+  nome: string;
+  email: string;
+  isAdmin: boolean;
+  emailVerificado: boolean;
+  statusAssinatura: string;
+}) {
   return {
     id: usuario.id,
     nome: usuario.nome,
     email: usuario.email,
     isAdmin: usuario.isAdmin,
+    emailVerificado: usuario.emailVerificado,
     statusAssinatura: usuario.statusAssinatura,
   };
 }
@@ -77,5 +86,15 @@ export const authController = {
   async excluirConta(req: Request<unknown, unknown, ExcluirContaInput>, res: Response) {
     await authService.excluirConta(req.usuario!.id, req.body.senha);
     sucesso(res, null, "Conta excluida com sucesso");
+  },
+
+  async verificarEmail(req: Request<unknown, unknown, VerificarEmailInput>, res: Response) {
+    await authService.verificarEmail(req.body.token);
+    sucesso(res, null, "E-mail verificado com sucesso");
+  },
+
+  async reenviarVerificacao(req: Request, res: Response) {
+    await authService.reenviarVerificacao(req.usuario!.id);
+    sucesso(res, null, "E-mail de verificacao reenviado");
   },
 };

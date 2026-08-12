@@ -40,3 +40,8 @@ export const excluirContaSchema = z.object({
   senha: z.string().min(1, "senha e obrigatoria"),
 });
 export type ExcluirContaInput = z.infer<typeof excluirContaSchema>;
+
+export const verificarEmailSchema = z.object({
+  token: z.string().min(1, "token e obrigatorio"),
+});
+export type VerificarEmailInput = z.infer<typeof verificarEmailSchema>;

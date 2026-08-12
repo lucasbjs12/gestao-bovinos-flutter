@@ -51,6 +51,7 @@ model Usuario {
   email            String           @unique
   senhaHash        String           @map("senha_hash")
   isAdmin          Boolean          @default(false) @map("is_admin")
+  emailVerificado  Boolean          @default(false) @map("email_verificado")
   statusAssinatura StatusAssinatura @default(pendente) @map("status_assinatura")
   plano            String?
   vencimento       DateTime?
@@ -60,6 +61,7 @@ model Usuario {
   membros          Membro[]
   refreshTokens    RefreshToken[]
   resetTokens      PasswordResetToken[]
+  verificacaoTokens VerificacaoEmailToken[]
   convitesCriados  Convite[]        @relation("ConviteCriadoPor")
   convitesUsados   Convite[]        @relation("ConviteUsadoPor")
   atividades       Atividade[]
@@ -89,6 +91,18 @@ model PasswordResetToken {
 
   @@index([usuarioId])
   @@map("password_reset_tokens")
+}
+
+model VerificacaoEmailToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  usuarioId String    @map("usuario_id") @db.Uuid
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tokenHash String    @map("token_hash")
+  expiraEm  DateTime  @map("expira_em")
+  usadoEm   DateTime? @map("usado_em")
+
+  @@index([usuarioId])
+  @@map("verificacao_email_tokens")
 }
 
 model Fazenda {

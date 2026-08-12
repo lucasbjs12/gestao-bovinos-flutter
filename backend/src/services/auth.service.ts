@@ -4,11 +4,14 @@ import { AppError } from "../exceptions/AppError";
 import { usuarioRepository } from "../repositories/usuario.repository";
 import { refreshTokenRepository } from "../repositories/refreshToken.repository";
 import { passwordResetTokenRepository } from "../repositories/passwordResetToken.repository";
+import { verificacaoEmailTokenRepository } from "../repositories/verificacaoEmailToken.repository";
 import { emailService } from "./email.service";
+import { logger } from "../config/logger";
 import { compararSenha, hashSenha } from "../utils/senha";
 import {
   calcularExpiracaoRefreshToken,
   calcularExpiracaoResetToken,
+  calcularExpiracaoVerificacaoEmail,
   gerarAccessToken,
   gerarRefreshTokenBruto,
   gerarResetTokenBruto,
@@ -76,6 +79,15 @@ export const authService = {
     });
 
     const tokens = await emitirTokens(usuario.id, usuario.isAdmin, usuario.nome);
+
+    // Best-effort: se a Resend estiver fora do ar ou sem chave configurada,
+    // o cadastro nao pode falhar por causa disso -- so registra o erro.
+    try {
+      await authService.enviarVerificacaoEmail(usuario);
+    } catch (err) {
+      logger.error({ err }, "Falha ao enviar e-mail de verificacao no registro");
+    }
+
     return { usuario, fazenda, ...tokens };
   },
 
@@ -188,6 +200,43 @@ export const authService = {
       await tx.convite.updateMany({ where: { usadoPorId: usuarioId }, data: { usadoPorId: null } });
       await tx.usuario.delete({ where: { id: usuarioId } });
     });
+  },
+
+  async enviarVerificacaoEmail(usuario: { id: string; nome: string; email: string }) {
+    await verificacaoEmailTokenRepository.invalidarTodosDoUsuario(usuario.id);
+
+    const tokenBruto = gerarResetTokenBruto();
+    await verificacaoEmailTokenRepository.criar({
+      usuarioId: usuario.id,
+      tokenHash: hashResetToken(tokenBruto),
+      expiraEm: calcularExpiracaoVerificacaoEmail(),
+    });
+
+    const link = `${env.frontendUrl}/verificar-email?token=${tokenBruto}`;
+    await emailService.enviarVerificacaoEmail(usuario.email, usuario.nome, link);
+  },
+
+  async reenviarVerificacao(usuarioId: string) {
+    const usuario = await usuarioRepository.buscarPorId(usuarioId);
+    if (!usuario) {
+      throw AppError.naoAutorizado("Usuario nao encontrado");
+    }
+    if (usuario.emailVerificado) {
+      throw AppError.conflito("E-mail ja verificado");
+    }
+    await authService.enviarVerificacaoEmail(usuario);
+  },
+
+  async verificarEmail(tokenBruto: string) {
+    const tokenHash = hashResetToken(tokenBruto);
+    const registro = await verificacaoEmailTokenRepository.buscarPorHash(tokenHash);
+
+    if (!registro || registro.usadoEm || registro.expiraEm < new Date()) {
+      throw AppError.naoAutorizado("Link de verificacao invalido ou expirado");
+    }
+
+    await usuarioRepository.marcarEmailVerificado(registro.usuarioId);
+    await verificacaoEmailTokenRepository.marcarUsado(registro.id);
   },
 
   verificarAccessToken,

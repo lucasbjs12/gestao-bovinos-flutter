@@ -42,3 +42,7 @@ export function hashResetToken(tokenBruto: string): string {
 export function calcularExpiracaoResetToken(): Date {
   return new Date(Date.now() + 60 * 60 * 1000);
 }
+
+export function calcularExpiracaoVerificacaoEmail(): Date {
+  return new Date(Date.now() + 24 * 60 * 60 * 1000);
+}

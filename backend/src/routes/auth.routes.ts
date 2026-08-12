@@ -11,6 +11,7 @@ import {
   redefinirSenhaSchema,
   refreshSchema,
   registroSchema,
+  verificarEmailSchema,
 } from "../dtos/auth.dto";
 import { asyncHandler } from "../utils/asyncHandler";
 import { env } from "../config/env";
@@ -56,4 +57,16 @@ authRouter.delete(
   autenticar,
   validarBody(excluirContaSchema),
   asyncHandler(authController.excluirConta),
+);
+authRouter.post(
+  "/verificar-email",
+  limitadorAuth,
+  validarBody(verificarEmailSchema),
+  asyncHandler(authController.verificarEmail),
+);
+authRouter.post(
+  "/reenviar-verificacao",
+  autenticar,
+  limitadorAuth,
+  asyncHandler(authController.reenviarVerificacao),
 );

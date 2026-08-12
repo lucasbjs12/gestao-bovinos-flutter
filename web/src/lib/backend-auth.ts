@@ -6,6 +6,7 @@ export interface UsuarioBackend {
   nome: string;
   email: string;
   isAdmin: boolean;
+  emailVerificado: boolean;
   statusAssinatura: string;
 }
 
@@ -74,6 +75,14 @@ export const backendAuth = {
 
   async redefinirSenha(token: string, novaSenha: string) {
     await api.post("/auth/redefinir-senha", { token, novaSenha }, { autenticado: false });
+  },
+
+  async verificarEmail(token: string) {
+    await api.post("/auth/verificar-email", { token }, { autenticado: false });
+  },
+
+  async reenviarVerificacao() {
+    await api.post("/auth/reenviar-verificacao", {});
   },
 
   async me(): Promise<{ usuario: UsuarioBackend; fazendaPropria: FazendaBackend | null }> {
