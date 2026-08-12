@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { FormField } from "@/components/ui/FormField";
 import { EmptyState, Spinner } from "@/components/ui/EmptyState";
+import { BovinoPhoto } from "@/components/ui/BovinoPhoto";
 
 const MOTIVOS: MotivoBaixa[] = ["Venda", "Morte", "Furto", "Outros"];
 
@@ -54,6 +55,7 @@ export default function DetalheBovinoPage() {
   const [raca, setRaca] = useState("");
   const [categoria, setCategoria] = useState<CategoriaBovino | "">("");
   const [peso, setPeso] = useState("");
+  const [foto, setFoto] = useState<string | null>(null);
   const [invernadaId, setInvernadaId] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [codigoEpc, setCodigoEpc] = useState("");
@@ -106,6 +108,7 @@ export default function DetalheBovinoPage() {
     setRaca(bovino.raca ?? "");
     setCategoria(bovino.categoria ?? "");
     setPeso(bovino.pesoAtualKg != null ? String(bovino.pesoAtualKg) : "");
+    setFoto(bovino.foto ?? null);
     setInvernadaId(bovino.invernadaId ?? "");
     setObservacoes(bovino.observacoes ?? "");
     setCodigoEpc(bovino.codigoEpc ?? "");
@@ -295,6 +298,12 @@ export default function DetalheBovinoPage() {
 
       <Card className="p-6 mb-5">
         <form onSubmit={salvar} className="flex flex-col gap-4">
+          <BovinoPhoto
+            foto={foto}
+            alt={`Foto do bovino ${numeroBrinco}`}
+            size="lg"
+          />
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Número do brinco *">
               <input value={numeroBrinco} onChange={(e) => setNumeroBrinco(e.target.value)} className="field" />

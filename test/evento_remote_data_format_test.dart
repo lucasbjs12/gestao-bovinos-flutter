@@ -25,24 +25,45 @@ import 'helpers/token_storage_falso.dart';
 /// a conversão em si já está coberta isoladamente em `data_iso_test.dart`.
 /// `darBaixa` não depende de banco, então testa o caminho de rede real.
 void main() {
-  test('BovinoRemoteRepository.darBaixa manda dataBaixa em ISO, não dd/MM/yyyy', () async {
-    final falso = TokenStorageFalso();
-
-    Map<String, dynamic>? corpoRecebido;
-    final cliente = MockClient((request) async {
-      corpoRecebido = jsonDecode(request.body) as Map<String, dynamic>;
-      return http.Response(
-        jsonEncode({'success': true, 'message': 'OK', 'data': {}}),
-        200,
-        headers: {'content-type': 'application/json'},
-      );
-    });
-    final api = ApiClient(httpClient: cliente, tokenStorage: falso);
-    final repo = BovinoRemoteRepository(uid: 'f1', sync: SyncStatusService(), apiClient: api);
-
-    await repo.darBaixa('bov-3', motivo: 'Venda', dataBaixa: '28/02/2026');
-
-    expect(corpoRecebido!['dataBaixa'], '2026-02-28');
-    expect(corpoRecebido!['dataBaixa'], isNot('28/02/2026'));
+  test('fotoPublicaOuNull aceita apenas URLs http/https', () {
+    expect(
+      fotoPublicaOuNull('https://res.cloudinary.com/demo/image/upload/a.jpg'),
+      'https://res.cloudinary.com/demo/image/upload/a.jpg',
+    );
+    expect(
+      fotoPublicaOuNull('http://example.com/a.jpg'),
+      'http://example.com/a.jpg',
+    );
+    expect(fotoPublicaOuNull('/data/user/0/app/files/foto.jpg'), isNull);
+    expect(fotoPublicaOuNull(r'C:\temp\foto.jpg'), isNull);
+    expect(fotoPublicaOuNull(null), isNull);
   });
+
+  test(
+    'BovinoRemoteRepository.darBaixa manda dataBaixa em ISO, não dd/MM/yyyy',
+    () async {
+      final falso = TokenStorageFalso();
+
+      Map<String, dynamic>? corpoRecebido;
+      final cliente = MockClient((request) async {
+        corpoRecebido = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(
+          jsonEncode({'success': true, 'message': 'OK', 'data': {}}),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      final api = ApiClient(httpClient: cliente, tokenStorage: falso);
+      final repo = BovinoRemoteRepository(
+        uid: 'f1',
+        sync: SyncStatusService(),
+        apiClient: api,
+      );
+
+      await repo.darBaixa('bov-3', motivo: 'Venda', dataBaixa: '28/02/2026');
+
+      expect(corpoRecebido!['dataBaixa'], '2026-02-28');
+      expect(corpoRecebido!['dataBaixa'], isNot('28/02/2026'));
+    },
+  );
 }

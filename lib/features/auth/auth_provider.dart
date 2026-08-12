@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -75,13 +76,18 @@ class AuthProvider extends ChangeNotifier {
       _isAdmin = perfil.usuario.isAdmin;
       _fazendaPropriaId = perfil.fazendaPropria?.id;
 
-      final prefs = await SharedPreferences.getInstance();
-      _fazendaAtivaId = prefs.getString(_chaveFazenda(_currentUser!.uid));
+      if (perfil.usuario.emailVerificado) {
+        final prefs = await SharedPreferences.getInstance();
+        _fazendaAtivaId = prefs.getString(_chaveFazenda(_currentUser!.uid));
 
-      if (fazendaId != null) {
-        await AppDatabase.instance.instanceFor(fazendaId);
+        if (fazendaId != null) {
+          await AppDatabase.instance.instanceFor(fazendaId);
+        }
+        _status = AuthStatus.authenticated;
+      } else {
+        _fazendaAtivaId = null;
+        _status = AuthStatus.unverified;
       }
-      _status = AuthStatus.authenticated;
     } on ApiException catch (e) {
       if (e.statusCode == 401 && !tentouRefresh) {
         final sessao = await _authService.refresh().catchError((_) => null);
@@ -168,8 +174,8 @@ class AuthProvider extends ChangeNotifier {
       _error = _mensagemErroLogin(e);
       notifyListeners();
       return false;
-    } catch (_) {
-      _error = 'Sem conexão com o servidor.';
+    } catch (e) {
+      _error = _mensagemErroConexao(e);
       notifyListeners();
       return false;
     }
@@ -204,19 +210,20 @@ class AuthProvider extends ChangeNotifier {
       _error = _mensagemErroCadastro(e);
       notifyListeners();
       return false;
-    } catch (_) {
-      _error = 'Sem conexão com o servidor.';
+    } catch (e) {
+      _error = _mensagemErroConexao(e);
       notifyListeners();
       return false;
     }
   }
 
-  /// O backend não tem verificação de e-mail -- mantido só pra não quebrar
-  /// a tela antiga que ainda chama isso; sempre "sucesso" pois o status
-  /// nunca fica `unverified` neste fluxo.
-  Future<bool> verificarEmail() async => true;
+  /// Recarrega o perfil depois que o usuario abre o link recebido por e-mail.
+  Future<bool> verificarEmail() async {
+    await _carregarSessao();
+    return _status == AuthStatus.authenticated;
+  }
 
-  Future<void> reenviarVerificacao() async {}
+  Future<void> reenviarVerificacao() => _authService.reenviarVerificacao();
 
   Future<void> recuperarSenha(String email) async {
     await _authService.esqueciSenha(email: email);
@@ -253,8 +260,8 @@ class AuthProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       if (e.statusCode == 401) return 'Senha atual incorreta.';
       return 'Erro: ${e.message}';
-    } catch (_) {
-      return 'Sem conexão com o servidor.';
+    } catch (e) {
+      return _mensagemErroConexao(e);
     }
   }
 
@@ -268,8 +275,8 @@ class AuthProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       if (e.statusCode == 401) return 'Senha incorreta.';
       return 'Erro ao verificar senha: ${e.message}';
-    } catch (_) {
-      return 'Sem conexão com o servidor.';
+    } catch (e) {
+      return _mensagemErroConexao(e);
     }
   }
 
@@ -288,9 +295,16 @@ class AuthProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       if (e.statusCode == 401) return 'Senha incorreta.';
       return 'Erro: ${e.message}';
-    } catch (_) {
-      return 'Sem conexão com o servidor.';
+    } catch (e) {
+      return _mensagemErroConexao(e);
     }
+  }
+
+  String _mensagemErroConexao(Object erro) {
+    if (kDebugMode) {
+      return 'Sem conexão com o servidor. Detalhe: $erro';
+    }
+    return 'Sem conexão com o servidor.';
   }
 
   String _mensagemErroLogin(ApiException e) {

@@ -29,6 +29,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Spinner } from "@/components/ui/EmptyState";
+import { BovinoPhoto } from "@/components/ui/BovinoPhoto";
 
 interface Bovino {
   id: string;
@@ -36,6 +37,7 @@ interface Bovino {
   nomeAnimal?: string | null;
   categoria?: string | null;
   pesoAtualKg?: string | null;
+  foto?: string | null;
   invernadaId?: string | null;
   status: string;
 }
@@ -439,9 +441,15 @@ export default function BovinosPage() {
                       </td>
                     )}
                     <td className="px-5 py-3.5">
-                      <span className="font-mono font-bold text-text tabular-nums">
-                        {b.numeroBrinco}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <BovinoPhoto
+                          foto={b.foto}
+                          alt={`Foto do bovino ${b.numeroBrinco}`}
+                        />
+                        <span className="font-mono font-bold text-text tabular-nums">
+                          {b.numeroBrinco}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-5 py-3.5 text-text">{b.nomeAnimal || "—"}</td>
                     <td className="px-5 py-3.5">

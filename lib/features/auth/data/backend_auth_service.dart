@@ -80,6 +80,10 @@ class BackendAuthService {
     );
   }
 
+  Future<void> reenviarVerificacao() async {
+    await _api.post('/auth/reenviar-verificacao');
+  }
+
   Future<void> excluirConta({required String senha}) async {
     await _api.delete('/auth/me', corpo: {'senha': senha});
   }

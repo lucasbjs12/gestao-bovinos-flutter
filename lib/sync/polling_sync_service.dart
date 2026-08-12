@@ -11,6 +11,8 @@ import '../features/atividades/data/atividade.dart';
 import '../features/atividades/data/atividade_local_repository.dart';
 import '../features/bovinos/data/bovino.dart';
 import '../features/bovinos/data/bovino_local_repository.dart';
+import '../features/bovinos/data/bovino_photo_sync_service.dart';
+import '../features/bovinos/data/bovino_remote_repository.dart';
 import '../features/eventos_sanitarios/data/evento_sanitario.dart';
 import '../features/eventos_sanitarios/data/evento_sanitario_local_repository.dart';
 import '../features/eventos_sanitarios/data/tipo_evento_mapping.dart';
@@ -75,6 +77,13 @@ class PollingSyncService {
       await outbox.tentarEsvaziar();
       await outbox.avisar(sync);
 
+      await BovinoPhotoSyncService(
+        uid: uid,
+        db: db,
+        apiClient: _api,
+      ).reenviarPendentes();
+      await outbox.avisar(sync);
+
       // O que ainda ficou na fila (offline de verdade, ou envio que ainda
       // não terminou) não pode ser apagado localmente só por não aparecer
       // na resposta do servidor -- senão um cadastro recém-feito "some"
@@ -92,7 +101,11 @@ class PollingSyncService {
     }
   }
 
-  Future<void> _sincronizarInvernadas(String uid, Database db, Set<String> pendentes) async {
+  Future<void> _sincronizarInvernadas(
+    String uid,
+    Database db,
+    Set<String> pendentes,
+  ) async {
     final api = _api;
     final itens = await buscarTodasPaginas(api, '/fazendas/$uid/invernadas');
     final repo = InvernadaLocalRepository(db);
@@ -101,13 +114,15 @@ class PollingSyncService {
     for (final d in itens) {
       final syncId = d['id'] as String;
       remotoIds.add(syncId);
-      await repo.inserirOuSubstituirPorSyncId(Invernada(
-        syncId: syncId,
-        descricao: d['descricao'] as String? ?? '',
-        hectares: _doubleOuNull(d['hectares']),
-        urlFoto: d['urlFoto'] as String?,
-        observacoes: d['observacoes'] as String?,
-      ));
+      await repo.inserirOuSubstituirPorSyncId(
+        Invernada(
+          syncId: syncId,
+          descricao: d['descricao'] as String? ?? '',
+          hectares: _doubleOuNull(d['hectares']),
+          urlFoto: d['urlFoto'] as String?,
+          observacoes: d['observacoes'] as String?,
+        ),
+      );
     }
     final locais = await repo.listarTodosSyncIds();
     for (final syncId in locais.difference(remotoIds).difference(pendentes)) {
@@ -115,7 +130,11 @@ class PollingSyncService {
     }
   }
 
-  Future<void> _sincronizarBovinos(String uid, Database db, Set<String> pendentes) async {
+  Future<void> _sincronizarBovinos(
+    String uid,
+    Database db,
+    Set<String> pendentes,
+  ) async {
     final api = _api;
     final itens = await buscarTodasPaginas(api, '/fazendas/$uid/bovinos');
     final repo = BovinoLocalRepository(db);
@@ -126,35 +145,54 @@ class PollingSyncService {
     for (final d in itens) {
       final syncId = d['id'] as String;
       remotoIds.add(syncId);
-      final invernadaId = await SyncRefs.idPorSyncId(db, 'invernadas', d['invernadaId'] as String?);
-      final dataNascimentoStr = (d['dataNascimento'] as String?)?.substring(0, 10);
-      await repo.inserirOuSubstituirPorSyncId(Bovino(
-        syncId: syncId,
-        numeroBrinco: d['numeroBrinco'] as String? ?? '',
-        nomeAnimal: d['nomeAnimal'] as String?,
-        codigoEpc: d['codigoEpc'] as String?,
-        codigoInterno: d['codigoInterno'] as String?,
-        raca: d['raca'] as String?,
-        dataNascimento: dataNascimentoStr,
-        // Campo só local (backend só guarda a data em si) -- recalcula
-        // aqui, senão fica null a cada sync (mesma classe de bug do
-        // dataEventoMillis dos eventos sanitários).
-        dataNascimentoMillis:
-            dataNascimentoStr != null ? DateTime.tryParse(dataNascimentoStr)?.millisecondsSinceEpoch : null,
-        pesoAtualKg: _doubleOuNull(d['pesoAtualKg']),
-        pelagem: d['pelagem'] as String?,
-        categoria: d['categoria'] as String?,
-        status: d['status'] as String? ?? 'Ativo',
-        origem: d['origem'] as String?,
-        observacoes: d['observacoes'] as String?,
-        foto: d['foto'] as String?,
-        invernadaId: invernadaId,
-        estaDeCria: (d['estaDeCria'] == true) ? 1 : 0,
-        // `sexo` não existe no backend -- é campo só local, sempre derivado
-        // da categoria (mesma regra do formulário de cadastro), pra não
-        // zerar o valor a cada rodada de sync.
-        sexo: _sexoDaCategoria(d['categoria'] as String?),
-      ));
+      final existente = await repo.buscarPorSyncId(syncId);
+      final fotoRemota = d['foto'] as String?;
+      final fotoLocalExistente = existente?.foto;
+      final foto =
+          fotoRemota ??
+          (pendentes.contains(syncId) ||
+                  fotoPublicaOuNull(fotoLocalExistente) == null
+              ? fotoLocalExistente
+              : null);
+      final invernadaId = await SyncRefs.idPorSyncId(
+        db,
+        'invernadas',
+        d['invernadaId'] as String?,
+      );
+      final dataNascimentoStr = (d['dataNascimento'] as String?)?.substring(
+        0,
+        10,
+      );
+      await repo.inserirOuSubstituirPorSyncId(
+        Bovino(
+          syncId: syncId,
+          numeroBrinco: d['numeroBrinco'] as String? ?? '',
+          nomeAnimal: d['nomeAnimal'] as String?,
+          codigoEpc: d['codigoEpc'] as String?,
+          codigoInterno: d['codigoInterno'] as String?,
+          raca: d['raca'] as String?,
+          dataNascimento: dataNascimentoStr,
+          // Campo só local (backend só guarda a data em si) -- recalcula
+          // aqui, senão fica null a cada sync (mesma classe de bug do
+          // dataEventoMillis dos eventos sanitários).
+          dataNascimentoMillis: dataNascimentoStr != null
+              ? DateTime.tryParse(dataNascimentoStr)?.millisecondsSinceEpoch
+              : null,
+          pesoAtualKg: _doubleOuNull(d['pesoAtualKg']),
+          pelagem: d['pelagem'] as String?,
+          categoria: d['categoria'] as String?,
+          status: d['status'] as String? ?? 'Ativo',
+          origem: d['origem'] as String?,
+          observacoes: d['observacoes'] as String?,
+          foto: foto,
+          invernadaId: invernadaId,
+          estaDeCria: (d['estaDeCria'] == true) ? 1 : 0,
+          // `sexo` não existe no backend -- é campo só local, sempre derivado
+          // da categoria (mesma regra do formulário de cadastro), pra não
+          // zerar o valor a cada rodada de sync.
+          sexo: _sexoDaCategoria(d['categoria'] as String?),
+        ),
+      );
     }
     // 2ª passada: resolve idMae agora que todo mundo já existe localmente.
     for (final d in itens) {
@@ -171,16 +209,27 @@ class PollingSyncService {
     }
   }
 
-  Future<void> _sincronizarEventos(String uid, Database db, Set<String> pendentes) async {
+  Future<void> _sincronizarEventos(
+    String uid,
+    Database db,
+    Set<String> pendentes,
+  ) async {
     final api = _api;
-    final itens = await buscarTodasPaginas(api, '/fazendas/$uid/eventos-sanitarios');
+    final itens = await buscarTodasPaginas(
+      api,
+      '/fazendas/$uid/eventos-sanitarios',
+    );
     final repo = EventoSanitarioLocalRepository(db);
 
     final remotoIds = <String>{};
     for (final d in itens) {
       final syncId = d['id'] as String;
       remotoIds.add(syncId);
-      final invernadaId = await SyncRefs.idPorSyncId(db, 'invernadas', d['invernadaId'] as String?);
+      final invernadaId = await SyncRefs.idPorSyncId(
+        db,
+        'invernadas',
+        d['invernadaId'] as String?,
+      );
       final bovinosRemotos = (d['bovinos'] as List? ?? [])
           .map((b) => (b as Map<String, dynamic>)['bovinoId'] as String)
           .toList();
@@ -195,8 +244,9 @@ class PollingSyncService {
       // si) -- precisa ser recalculado aqui, senão fica null a cada sync e
       // o bovino "perde" o manejo nas telas que ordenam/filtram por isso
       // (ex. "Sem manejo").
-      final dataEventoMillis =
-          dataEventoStr != null ? DateTime.tryParse(dataEventoStr)?.millisecondsSinceEpoch : null;
+      final dataEventoMillis = dataEventoStr != null
+          ? DateTime.tryParse(dataEventoStr)?.millisecondsSinceEpoch
+          : null;
       await repo.inserirOuSubstituirPorSyncId(
         EventoSanitario(
           syncId: syncId,
@@ -222,21 +272,26 @@ class PollingSyncService {
     final api = _api;
     // Só as mais recentes -- é só um log de leitura, não precisa da
     // história inteira toda rodada (limita a 200 mais recentes).
-    final resposta = await api.get('/fazendas/$uid/atividades?page=1&pageSize=100')
-        as Map<String, dynamic>;
+    final resposta =
+        await api.get('/fazendas/$uid/atividades?page=1&pageSize=100')
+            as Map<String, dynamic>;
     final itens = (resposta['itens'] as List).cast<Map<String, dynamic>>();
     final repo = AtividadeLocalRepository(db);
 
     for (final d in itens) {
       final criadoEm = DateTime.tryParse(d['criadoEm'] as String? ?? '');
-      await repo.inserirOuSubstituirPorSyncId(Atividade(
-        syncId: d['id'] as String,
-        autorUid: d['autorId'] as String? ?? uid,
-        autorNome: d['autorNome'] as String?,
-        acao: d['acao'] as String? ?? '',
-        descricao: d['descricao'] as String? ?? '',
-        dataMillis: criadoEm?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch,
-      ));
+      await repo.inserirOuSubstituirPorSyncId(
+        Atividade(
+          syncId: d['id'] as String,
+          autorUid: d['autorId'] as String? ?? uid,
+          autorNome: d['autorNome'] as String?,
+          acao: d['acao'] as String? ?? '',
+          descricao: d['descricao'] as String? ?? '',
+          dataMillis:
+              criadoEm?.millisecondsSinceEpoch ??
+              DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
     }
   }
 

@@ -113,7 +113,7 @@ class _CadastroFazendaScreenState extends State<CadastroFazendaScreen> {
                   ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Informe a senha.';
-                    if (v.length < 6) return 'A senha deve ter pelo menos 6 caracteres.';
+                    if (v.length < 8) return 'A senha deve ter pelo menos 8 caracteres.';
                     return null;
                   },
                 ),

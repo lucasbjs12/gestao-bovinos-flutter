@@ -46,13 +46,14 @@ class Outbox {
     required String metodo,
     required String caminho,
     Object? corpo,
+    String? syncId,
     String? descricao,
   }) {
     return db.insert('pending_ops', {
       'tipo': 'chamada',
       'metodo': metodo,
       'caminho': caminho,
-      'syncId': null,
+      'syncId': syncId,
       'corpo': corpo == null ? null : jsonEncode(corpo),
       'descricao': descricao,
       'criadoEm': DateTime.now().millisecondsSinceEpoch,
@@ -71,7 +72,11 @@ class Outbox {
   }
 
   Future<List<String?>> listarDescricoes() async {
-    final rows = await db.query('pending_ops', columns: ['descricao'], orderBy: 'id ASC');
+    final rows = await db.query(
+      'pending_ops',
+      columns: ['descricao'],
+      orderBy: 'id ASC',
+    );
     return rows.map((r) => r['descricao'] as String?).toList();
   }
 
@@ -83,7 +88,7 @@ class Outbox {
     final rows = await db.query(
       'pending_ops',
       columns: ['syncId'],
-      where: "tipo = 'upsert'",
+      where: 'syncId IS NOT NULL',
     );
     return rows.map((r) => r['syncId'] as String?).whereType<String>().toSet();
   }

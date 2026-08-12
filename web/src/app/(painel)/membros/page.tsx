@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { UserPlus, Crown, User, Trash2, Copy, Check, Users, MessageCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { membrosApi, Membro } from "@/lib/api/membros";
@@ -17,15 +17,15 @@ export default function MembrosPage() {
   const [gerando, setGerando] = useState(false);
   const [copiado, setCopiado] = useState(false);
 
-  async function carregar() {
+  const carregar = useCallback(async () => {
     if (!fazendaId) return;
     setMembros(await membrosApi.listar(fazendaId));
-  }
+  }, [fazendaId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     carregar();
-  }, [fazendaId]);
+  }, [carregar]);
 
   async function gerar() {
     if (!fazendaId) return;

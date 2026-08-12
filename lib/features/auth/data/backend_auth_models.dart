@@ -6,6 +6,7 @@ class UsuarioBackend {
   final String nome;
   final String email;
   final bool isAdmin;
+  final bool emailVerificado;
   final String statusAssinatura;
 
   const UsuarioBackend({
@@ -13,6 +14,7 @@ class UsuarioBackend {
     required this.nome,
     required this.email,
     required this.isAdmin,
+    required this.emailVerificado,
     required this.statusAssinatura,
   });
 
@@ -22,6 +24,7 @@ class UsuarioBackend {
       nome: map['nome'] as String,
       email: map['email'] as String,
       isAdmin: map['isAdmin'] as bool? ?? false,
+      emailVerificado: map['emailVerificado'] as bool? ?? false,
       statusAssinatura: map['statusAssinatura'] as String? ?? 'pendente',
     );
   }

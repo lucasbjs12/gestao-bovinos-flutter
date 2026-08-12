@@ -32,8 +32,11 @@ class BovinoRemoteRepository {
   /// diário do lado do servidor) -- mantido só para não quebrar quem chama.
   Future<void> salvar(Bovino b, {bool registrarAtividade = true}) async {
     final db = await AppDatabase.instance.instanceFor(uid);
-    final invernadaSyncId = await SyncRefs.syncIdPorId(db, 'invernadas', b.invernadaId);
+    final invernadaSyncId =
+        await SyncRefs.syncIdPorId(db, 'invernadas', b.invernadaId);
     final maeSyncId = await SyncRefs.syncIdPorId(db, 'bovinos', b.idMae);
+    final fotoPublica = fotoPublicaOuNull(b.foto);
+    final fotoEhArquivoLocal = b.foto != null && fotoPublica == null;
 
     final corpo = {
       'nomeAnimal': b.nomeAnimal,
@@ -47,7 +50,7 @@ class BovinoRemoteRepository {
       'categoria': b.categoria,
       'origem': b.origem,
       'observacoes': b.observacoes,
-      'foto': b.foto,
+      if (!fotoEhArquivoLocal) 'foto': fotoPublica,
       'invernadaId': invernadaSyncId,
       'idMae': maeSyncId,
       'estaDeCria': b.estaDeCria == 1,
@@ -131,4 +134,12 @@ class BovinoRemoteRepository {
       await outbox.avisar(_sync);
     }
   }
+}
+
+String? fotoPublicaOuNull(String? foto) {
+  if (foto == null) return null;
+  final uri = Uri.tryParse(foto);
+  if (uri == null || uri.host.isEmpty) return null;
+  if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+  return foto;
 }

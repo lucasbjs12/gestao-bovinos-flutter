@@ -37,11 +37,13 @@ class BovinoLocalRepository {
     ].join(' ');
 
     final orderBy = switch (ordem) {
-      BovinoOrdem.brinco    => 'CAST(b.numeroBrinco AS INTEGER) ASC, b.numeroBrinco ASC',
-      BovinoOrdem.nome      => 'LOWER(COALESCE(b.nomeAnimal, b.numeroBrinco)) ASC',
+      BovinoOrdem.brinco =>
+        'CAST(b.numeroBrinco AS INTEGER) ASC, b.numeroBrinco ASC',
+      BovinoOrdem.nome => 'LOWER(COALESCE(b.nomeAnimal, b.numeroBrinco)) ASC',
       BovinoOrdem.categoria => 'b.categoria ASC, b.numeroBrinco ASC',
-      BovinoOrdem.invernada => 'LOWER(COALESCE(i.descricao,"")), b.numeroBrinco ASC',
-      BovinoOrdem.peso      => 'b.pesoAtualKg DESC NULLS LAST, b.numeroBrinco ASC',
+      BovinoOrdem.invernada =>
+        'LOWER(COALESCE(i.descricao,"")), b.numeroBrinco ASC',
+      BovinoOrdem.peso => 'b.pesoAtualKg DESC NULLS LAST, b.numeroBrinco ASC',
     };
 
     final sql =
@@ -70,13 +72,43 @@ class BovinoLocalRepository {
     return rows.isEmpty ? null : Bovino.fromMap(rows.first);
   }
 
+  Future<List<Bovino>> listarComFotoLocal({int limit = 20}) async {
+    final rows = await _db.rawQuery(
+      '''
+      SELECT b.*, i.descricao AS invernadaDescricao
+      FROM bovinos b
+      LEFT JOIN invernadas i ON b.invernadaId = i.id
+      WHERE b.foto IS NOT NULL
+        AND LOWER(b.foto) NOT LIKE 'http://%'
+        AND LOWER(b.foto) NOT LIKE 'https://%'
+      ORDER BY b.id ASC
+      LIMIT ?
+      ''',
+      [limit],
+    );
+    return rows.map(Bovino.fromMap).toList();
+  }
+
+  Future<void> atualizarFotoPorSyncId(String syncId, String foto) => _db.update(
+    'bovinos',
+    {'foto': foto},
+    where: 'syncId = ?',
+    whereArgs: [syncId],
+  );
+
   Future<bool> brincoEmUso(String brinco, {int? excluirId}) async {
-    final whereStr =
-        excluirId != null ? 'numeroBrinco = ? AND id != ?' : 'numeroBrinco = ?';
+    final whereStr = excluirId != null
+        ? 'numeroBrinco = ? AND id != ?'
+        : 'numeroBrinco = ?';
     final args = excluirId != null ? [brinco, excluirId] : [brinco];
-    final count = Sqflite.firstIntValue(
-      await _db.rawQuery('SELECT COUNT(*) FROM bovinos WHERE $whereStr', args),
-    ) ?? 0;
+    final count =
+        Sqflite.firstIntValue(
+          await _db.rawQuery(
+            'SELECT COUNT(*) FROM bovinos WHERE $whereStr',
+            args,
+          ),
+        ) ??
+        0;
     return count > 0;
   }
 
@@ -104,11 +136,17 @@ class BovinoLocalRepository {
     return rows.isEmpty ? null : Bovino.fromMap(rows.first);
   }
 
-  Future<void> vincularTerneiro(int terneiroId, int maeId) =>
-      _db.update('bovinos', {'idMae': maeId}, where: 'id = ?', whereArgs: [terneiroId]);
+  Future<void> vincularTerneiro(int terneiroId, int maeId) => _db.update(
+    'bovinos',
+    {'idMae': maeId},
+    where: 'id = ?',
+    whereArgs: [terneiroId],
+  );
 
-  Future<void> desvincularTerneiro(int terneiroId) =>
-      _db.rawUpdate('UPDATE bovinos SET idMae = NULL WHERE id = ?', [terneiroId]);
+  Future<void> desvincularTerneiro(int terneiroId) => _db.rawUpdate(
+    'UPDATE bovinos SET idMae = NULL WHERE id = ?',
+    [terneiroId],
+  );
 
   /// Cria terneiro mínimo herdando raça, invernada, origem e pelagem da mãe.
   Future<Bovino> criarTerneiroVinculado({
@@ -125,7 +163,11 @@ class BovinoLocalRepository {
         'categoria': 'Terneiro(a)',
       });
     final newId = await _db.insert('bovinos', mapa);
-    return Bovino.fromMap({...mapa, 'id': newId, 'invernadaDescricao': mae.invernadaDescricao});
+    return Bovino.fromMap({
+      ...mapa,
+      'id': newId,
+      'invernadaDescricao': mae.invernadaDescricao,
+    });
   }
 
   Future<Bovino?> buscarPorSyncId(String syncId) async {
@@ -165,19 +207,15 @@ class BovinoLocalRepository {
   }
 
   Future<void> atualizarIdMaePorSyncId(String syncId, int idMae) =>
-      _db.rawUpdate(
-        'UPDATE bovinos SET idMae = ? WHERE syncId = ?',
-        [idMae, syncId],
-      );
+      _db.rawUpdate('UPDATE bovinos SET idMae = ? WHERE syncId = ?', [
+        idMae,
+        syncId,
+      ]);
 
   Future<int> inserir(Bovino b) => _db.insert('bovinos', b.toMap());
 
-  Future<void> atualizar(Bovino b) => _db.update(
-        'bovinos',
-        b.toMap(),
-        where: 'id = ?',
-        whereArgs: [b.id],
-      );
+  Future<void> atualizar(Bovino b) =>
+      _db.update('bovinos', b.toMap(), where: 'id = ?', whereArgs: [b.id]);
 
   Future<void> excluir(int id) =>
       _db.delete('bovinos', where: 'id = ?', whereArgs: [id]);
@@ -287,7 +325,11 @@ class BovinoLocalRepository {
         where: 'id = ?',
         whereArgs: [id],
       );
-      await txn.delete('baixas_bovinos', where: 'bovinoId = ?', whereArgs: [id]);
+      await txn.delete(
+        'baixas_bovinos',
+        where: 'bovinoId = ?',
+        whereArgs: [id],
+      );
       final rows = await txn.rawQuery(
         'SELECT *, NULL AS invernadaDescricao FROM bovinos WHERE id = ?',
         [id],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Search, ArchiveX, RotateCcw, Trash2, Info } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { bovinosApi } from "@/lib/api/bovinos";
@@ -22,7 +22,7 @@ export default function AnimaisBaixadosPage() {
   const [lista, setLista] = useState<Bovino[] | null>(null);
   const [busca, setBusca] = useState("");
 
-  async function carregar() {
+  const carregar = useCallback(async () => {
     if (!fazendaId) return;
     const todos = await buscarTodasPaginas((page) =>
       bovinosApi.listar(fazendaId, { page, pageSize: 100 })
@@ -42,12 +42,12 @@ export default function AnimaisBaixadosPage() {
       })
     );
     setLista(comMotivo);
-  }
+  }, [fazendaId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     carregar();
-  }, [fazendaId]);
+  }, [carregar]);
 
   async function reativar(id: string) {
     if (!fazendaId) return;

@@ -28,6 +28,28 @@ http.Response _listaVazia() => http.Response(
   headers: {'content-type': 'application/json'},
 );
 
+http.Response _listaComBovinoSemFoto() => http.Response(
+  jsonEncode({
+    'success': true,
+    'message': 'OK',
+    'data': {
+      'itens': [
+        {
+          'id': 'bov-local',
+          'numeroBrinco': 'F-LOCAL',
+          'categoria': 'Vaca',
+          'status': 'Ativo',
+          'foto': null,
+          'estaDeCria': false,
+        },
+      ],
+      'paginacao': {'page': 1, 'pageSize': 100, 'total': 1, 'totalPaginas': 1},
+    },
+  }),
+  200,
+  headers: {'content-type': 'application/json'},
+);
+
 /// Reproduz o bug relatado: cadastrar um bovino, o envio pro servidor ainda
 /// não ter terminado (ou ter falhado), e a rodada de sync que roda logo em
 /// seguida apagar o registro local só porque ele "não existe no servidor"
@@ -55,7 +77,11 @@ void main() {
       // BovinoRemoteRepository.salvar() deixaria depois de uma falha.
       final bovinoRepo = BovinoLocalRepository(db);
       await bovinoRepo.inserir(
-        const Bovino(syncId: 'bov-pendente', numeroBrinco: 'F-001', categoria: 'Vaca'),
+        const Bovino(
+          syncId: 'bov-pendente',
+          numeroBrinco: 'F-001',
+          categoria: 'Vaca',
+        ),
       );
       await Outbox(db).enfileirarUpsert(
         caminhoBase: '/fazendas/f1/bovinos',
@@ -72,7 +98,8 @@ void main() {
       expect(
         aindaExiste,
         isNotNull,
-        reason: 'o bovino pendente de envio não pode sumir só porque o GET ainda não o retornou',
+        reason:
+            'o bovino pendente de envio não pode sumir só porque o GET ainda não o retornou',
       );
 
       // A UI deve continuar mostrando que há algo pendente de enviar.
@@ -115,6 +142,37 @@ void main() {
 
       expect(await Outbox(db).contar(), 0);
       expect(sync.pendencias, 0);
+    },
+  );
+  test(
+    'pull com foto remota nula preserva foto local ainda pendente de upload',
+    () async {
+      final Database db = await criarDbTeste();
+      final falso = TokenStorageFalso();
+
+      final cliente = MockClient((request) async {
+        if (request.method == 'GET' && request.url.path.endsWith('/bovinos')) {
+          return _listaComBovinoSemFoto();
+        }
+        return _listaVazia();
+      });
+      final api = ApiClient(httpClient: cliente, tokenStorage: falso);
+
+      final bovinoRepo = BovinoLocalRepository(db);
+      await bovinoRepo.inserir(
+        const Bovino(
+          syncId: 'bov-local',
+          numeroBrinco: 'F-LOCAL',
+          categoria: 'Vaca',
+          foto: '/data/user/0/app/files/foto-local.jpg',
+        ),
+      );
+
+      final pollingSync = PollingSyncService(apiClient: api);
+      await pollingSync.start(uid: 'f1', db: db, sync: SyncStatusService());
+
+      final atualizado = await bovinoRepo.buscarPorSyncId('bov-local');
+      expect(atualizado!.foto, '/data/user/0/app/files/foto-local.jpg');
     },
   );
 }
