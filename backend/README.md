@@ -33,32 +33,32 @@ Os testes usam um banco Postgres **separado** do de desenvolvimento (as tabelas 
 4. Rodar a suite: `npm test` (ou `npm run test:watch` para modo watch)
 5. Checar tipos (src + test): `npm run typecheck`
 
-## Deploy (Railway)
+## Deploy (Render)
 
-A imagem Docker (`Dockerfile`, multi-stage) ja foi testada localmente de ponta a ponta (`docker build` + container rodando + `prisma migrate deploy` automatico + registro real funcionando). Passos no Railway:
+Em produção desde agosto/2026, em [api.gestaobovinos.com.br](https://api.gestaobovinos.com.br). Passos para replicar:
 
-1. **Criar o projeto**: no painel do Railway, "New Project" → "Deploy from GitHub repo" → selecionar este repositorio. O Railway detecta o `Dockerfile` e o `railway.json` automaticamente (builder `DOCKERFILE`, healthcheck em `/api/v1/health`).
-2. **Adicionar o Postgres**: no mesmo projeto, "New" → "Database" → "PostgreSQL". O Railway cria a variavel `DATABASE_URL` sozinho nesse serviço — copie o valor gerado (ou use a referência `${{Postgres.DATABASE_URL}}`) para a variavel `DATABASE_URL` do serviço do backend.
-3. **Configurar as variaveis de ambiente** no serviço do backend (aba "Variables"), uma por uma:
+1. **Banco**: Render → New → PostgreSQL (plano Free serve para começar).
+2. **Web Service**: New → Web Service → conectar o repositório. Root Directory vazio, **Dockerfile Path** `backend/Dockerfile`, **Docker Build Context Directory** `backend` (o Render soma Root Directory + esses caminhos, então se usar Root Directory `backend` os outros dois viram só `Dockerfile` e `.`).
+3. **Health Check Path**: `/api/v1/health`.
+4. **Variáveis de ambiente** no serviço:
 
-   | Variavel | Valor |
+   | Variável | Valor |
    |---|---|
-   | `DATABASE_URL` | a do Postgres do Railway (passo 2) |
-   | `JWT_ACCESS_SECRET` | gerar um segredo forte novo — **nunca** reaproveitar o do `.env` local (`openssl rand -base64 48` ou similar) |
+   | `DATABASE_URL` | Internal Database URL do Postgres criado no passo 1 |
+   | `JWT_ACCESS_SECRET` | segredo forte novo — **nunca** reaproveitar o do `.env` local (`openssl rand -base64 48` ou similar) |
    | `JWT_ACCESS_EXPIRES_IN` | `15m` |
    | `JWT_REFRESH_EXPIRES_IN_DAYS` | `30` |
-   | `CORS_ORIGIN` | dominio de onde o app vai chamar a API (ou `*` enquanto so o app mobile consome, sem navegador) |
+   | `CORS_ORIGIN` | domínio(s) do site, separados por vírgula se houver mais de um (ex: `https://gestaobovinos.com.br,https://www.gestaobovinos.com.br` — raiz e `www` são origens diferentes pro navegador mesmo com um redirecionando pro outro) |
+   | `FRONTEND_URL` | domínio do site (usado nos links dos e-mails) |
    | `RATE_LIMIT_WINDOW_MS` | `900000` |
    | `RATE_LIMIT_MAX` | `100` |
-   | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | mesma conta que o app Flutter ja usa (cloud name `duseg2d1m`) — sem isso o endpoint de upload responde 503, o resto da API funciona normal |
+   | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | conta usada pelo app Flutter para fotos — sem isso o endpoint de upload responde 503, o resto da API funciona normal |
+   | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | conta Resend com domínio verificado — sem isso, e-mails de reset de senha/confirmação de cadastro respondem 503 (não bloqueia cadastro/login) |
    | `NODE_ENV` | `production` |
-   | `PORT` | o Railway define sozinho; nao precisa setar |
 
-4. **Primeiro deploy**: o Railway builda a imagem e sobe o container. O `CMD` do Dockerfile roda `prisma migrate deploy` automaticamente antes de iniciar o servidor — as migrations aplicam sozinhas a cada deploy, so o que ainda nao foi aplicado.
-5. **Confirmar**: acessar `https://<seu-dominio-railway>/api/v1/health` (deve responder `{success:true,...}`) e `https://<seu-dominio-railway>/api/v1/docs/` (Swagger UI).
-6. Domínio: o Railway gera um `*.up.railway.app` gratis; dominio proprio e configuravel depois na aba "Settings" do servico.
-
-**Nao fiz o deploy de verdade** — isso exige acesso a sua conta Railway (e vai gerar custo). Testei a imagem localmente simulando exatamente esse fluxo (build → migrate deploy → health check → registro real), entao o caminho esta validado; falta so você criar o projeto e colar as variaveis acima.
+5. **Primeiro deploy**: o Render builda a imagem Docker e sobe o container. O `CMD` do Dockerfile roda `prisma migrate deploy` automaticamente antes de iniciar o servidor — as migrations aplicam sozinhas a cada deploy, só o que ainda não foi aplicado.
+6. **Domínio próprio**: Settings → Custom Domains do Web Service, adiciona o subdomínio (ex: `api.seudominio.com`) e configura o `CNAME` que ele mostrar no DNS do seu domínio.
+7. **Keep-alive**: o serviço faz self-ping em `/api/v1/health` a cada 10min (`src/utils/keepAlive.ts`) para evitar o "sleep" por inatividade do plano free do Render — só ativa quando a env var `RENDER_EXTERNAL_URL` existe (o próprio Render injeta essa variável; em dev local fica desligado sozinho).
 
 ## Migração dos dados do Firestore
 
@@ -73,7 +73,7 @@ Pre-requisitos: `FIREBASE_SERVICE_ACCOUNT_PATH` no `.env` apontando pra uma chav
 
 **Antes de rodar `--commit` contra o banco de produção**, leia com atenção:
 
-1. **Senha não migra.** O Firebase Auth guarda senha com o scrypt próprio do Google, não exportável como bcrypt. Todo usuário migrado recebe uma senha placeholder (hash de bytes aleatórios — ninguém sabe essa senha, nem você) e precisa passar por um fluxo de "esqueci minha senha" — **que ainda não existe neste backend**. Sem esse fluxo pronto, ninguém migrado consegue logar. Construir isso é pré-requisito antes de um corte de produção de verdade.
+1. **Senha não migra.** O Firebase Auth guarda senha com o scrypt próprio do Google, não exportável como bcrypt. Todo usuário migrado recebe uma senha placeholder (hash de bytes aleatórios — ninguém sabe essa senha, nem você) e precisa passar pelo fluxo de "esqueci minha senha" (`POST /auth/esqueci-senha`, já implementado — ver seção "Status") antes de conseguir logar.
 2. Nem todo usuário tem doc em `usuarios/{uid}` no Firestore (bug histórico conhecido do app — `garantirUsuario` nunca era chamado). O script cai pro Firebase Auth (`admin.auth().getUser`) quando o doc não existe, e loga um aviso no relatório.
 3. RFID fica de fora (decisão já tomada — ver seção 6 do fluxo de migração).
 4. **Nunca rodado contra dados reais** — não tenho credenciais de Firebase neste ambiente. A lógica foi revisada com cuidado mas só validada por leitura de código, não em runtime. **Rode `--dry-run` primeiro**, confira o relatório (`relatorio-migracao-*.json`, também no `.gitignore`) com atenção antes de cogitar `--commit`, e teste `--commit` contra um banco Postgres vazio de teste antes de rodar contra produção.
@@ -100,15 +100,17 @@ test/
 
 ## Status
 
-- **Fase 0 (fundacao)** concluida: projeto scaffolded, schema Prisma completo, health check funcionando.
-- **Fase 1 (auth + multi-tenant)** concluida: `POST /api/v1/auth/registro` (cria usuario + fazenda propria + membro dono), `login`, `refresh` (rotaciona e revoga o token antigo), `logout`, `GET /me`. Middlewares prontos para uso nas proximas fases: `autenticar` (JWT), `carregarFazendaAtiva` (resolve fazenda por header `X-Fazenda-Id` ou fazenda propria), `exigirPapel(...papeis)`, `exigirAssinaturaAtiva` (valida a assinatura do DONO da fazenda, nao do usuario logado). Testado manualmente ponta a ponta incluindo senha errada, e-mail duplicado, reuso de refresh token rotacionado e validacao Zod.
-- Registro cria o usuario com `statusAssinatura: "ativo"` (sem gateway de pagamento integrado ainda) — o campo e o middleware sao reais, so falta um fluxo de cobranca que crie usuarios como `pendente`.
-- **Fase 2 (recursos operacionais)** concluida: `invernadas`, `bovinos` (+ `PATCH /:id/baixa`), `eventos-sanitarios` (+ M2M com bovinos) e `movimentacoes` (registrar move atualiza `bovino.invernadaId` numa transaction), todos sob `/api/v1/fazendas/:fazendaId/<recurso>`. `carregarFazendaAtiva` resolve a fazenda pelo `:fazendaId` do path (nao mais por header) e confere dono/membro. Testado ponta a ponta: CRUD completo, validacao de referencias entre fazendas (422), isolamento entre fazendas de usuarios diferentes (403), fluxo de movimentacao + baixa.
-- **Fase 3 (colaboracao)** concluida: diario de atividades (`GET /atividades`, so leitura), convites (`POST/GET /fazendas/:fazendaId/convites` so dono; `GET/POST /convites/:codigo(/aceitar)` publico pra quem ainda nao e membro) e membros (`GET/DELETE /fazendas/:fazendaId/membros`). RBAC dono-vs-convidado validado de ponta a ponta pela primeira vez com um convidado real: cria mas nao exclui, nao gera convite, perde acesso (403) assim que o dono remove. Convite usa codigo `BOV-XXXXXX` (alfabeto sem 0/O/1/I), expira em 48h, uso unico.
-- **Fase 4 (uploads + admin)** concluida: `POST /fazendas/:fazendaId/uploads/assinar?pasta=bovinos|invernadas` gera payload de upload assinado pra Cloudinary (mesma conta que o app Flutter ja usa) sem tocar Firebase — algoritmo de assinatura conferido contra duas implementacoes SHA-1 independentes (.NET e Node). Requer `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET` no `.env`; sem isso retorna 503 (nao derruba o servidor). Painel admin (`GET /admin/usuarios`, `PATCH /admin/usuarios/:id/assinatura`) restrito a `isAdmin: true` — usado pra religar `exigirAssinaturaAtiva` quando cobranca real for integrada (ver nota da Fase 1 sobre `statusAssinatura: "ativo"` no registro).
-- Nucleo funcional do backend concluido (Fases 0-4).
-- **Fase 5 (testes automatizados)** concluida: 16 testes de integracao (vitest+supertest) contra um banco Postgres de teste dedicado (`gestaobovinos_test`), cobrindo auth, CRUD operacional, movimentacao+baixa, RBAC dono-vs-convidado e diario de atividades. `npm run typecheck` valida os tipos de `src` + `test` juntos (o `npm run build` ignora `test/`, so compila o codigo de producao).
-- **Fase 6 (documentacao)** concluida: spec OpenAPI 3.0 escrita a mao em `src/docs/openapi.ts` (23 rotas, 28 schemas, bate exatamente com os DTOs Zod e as regras de RBAC reais) servida via Swagger UI em `GET /api/v1/docs/` e JSON cru em `GET /api/v1/docs/openapi.json`. `helmet` roda com `contentSecurityPolicy: false` (API pura JSON pro app Flutter, CSP e protecao de navegador; tambem evita bloquear os scripts do Swagger UI).
-- **Fase 7 (deploy)** preparada: `Dockerfile` multi-stage + `railway.json` + `.dockerignore` criados e **testados localmente** (`docker build` + container rodando contra o Postgres local + `prisma migrate deploy` automatico no boot + registro real via HTTP, tudo dentro do container). `prisma` (CLI) movido de devDependencies pra dependencies — precisa dele em runtime pra rodar `migrate deploy` na imagem de producao. Deploy de verdade no Railway fica pendente de acesso a conta do usuario (ver secao "Deploy" acima com o checklist de variaveis).
-- **Fase 8 (script de migração do Firestore)** feita: `scripts/migrarFirestore.ts` — ver seção "Migração dos dados do Firestore" acima. Cobre usuarios (com fallback pro Firebase Auth quando falta o doc), fazendas, membros, invernadas, bovinos (+ referencia de mae), baixas, eventos sanitarios (+ M2M), movimentacoes e convites. Reaproveita os `syncId` (já são UUID v4) como PK do Postgres quando validos, evitando uma tabela de mapeamento de ids para a maioria das entidades. **Ainda não rodado contra dados reais** — sem credenciais de Firebase neste ambiente. Bloqueador antes de um corte de produção: não existe fluxo de "esqueci minha senha" no backend, e usuários migrados não têm como recuperar acesso sem ele.
-- Proxima fase: troca da camada remota no app Flutter (Firebase → REST).
+Em produção desde agosto/2026. Núcleo funcional completo:
+
+- **Auth**: registro (cria usuário + fazenda própria + membro dono), login, refresh (rotaciona e revoga o token antigo), logout, `GET /me`, alterar senha, excluir conta, **esqueci senha** e **confirmação de e-mail no cadastro** (ambos com e-mail HTML via Resend, token de uso único, expiração e revogação de sessões antigas ao redefinir senha).
+- **Multi-tenant + RBAC**: cada usuário tem uma fazenda própria; `carregarFazendaAtiva` resolve a fazenda pelo `:fazendaId` do path e confere dono/membro; `exigirPapel(...papeis)` e `exigirAssinaturaAtiva` (valida a assinatura do dono da fazenda). Registro cria o usuário com `statusAssinatura: "ativo"` (sem gateway de pagamento integrado ainda — campo e middleware são reais, só falta um fluxo de cobrança que crie usuários como `pendente`).
+- **Recursos operacionais**: `invernadas`, `bovinos` (+ baixa/reativação), `eventos-sanitarios` (M2M com bovinos) e `movimentacoes` (atualiza `bovino.invernadaId` numa transaction), todos sob `/api/v1/fazendas/:fazendaId/<recurso>`.
+- **Colaboração**: diário de atividades, convites por código (`BOV-XXXXXX`, expira em 48h, uso único) e membros (dono/convidado).
+- **Uploads**: `GET /fazendas/:fazendaId/uploads/assinar` gera payload de upload assinado pra Cloudinary (algoritmo de assinatura conferido contra duas implementações SHA-1 independentes). Sem `CLOUDINARY_*` no `.env`, retorna 503 sem derrubar o servidor.
+- **Admin**: `GET /admin/usuarios`, `PATCH /admin/usuarios/:id/assinatura`, restrito a `isAdmin: true`.
+- **Testes**: suíte de integração (vitest + supertest) contra um banco Postgres de teste dedicado (`gestaobovinos_test`), cobrindo auth, CRUD operacional, movimentação+baixa e RBAC. `npm run typecheck` valida os tipos de `src` + `test` juntos.
+- **Documentação**: spec OpenAPI 3.0 escrita a mão em `src/docs/openapi.ts`, servida via Swagger UI em `GET /api/v1/docs/`.
+- **Deploy**: Docker (`Dockerfile` multi-stage) no Render, com domínio próprio, migrations automáticas no boot e self-ping anti-sleep (ver seção "Deploy" acima).
+- **Segurança**: rate limiting (global + login/registro), headers via `helmet`, redação de tokens/cookies nos logs (`pino` `redact`), CORS restrito a origens explícitas.
+
+Pendências conhecidas: gateway de pagamento real (assinatura hoje é sempre `ativo` no registro); script de migração pontual do Firestore (`scripts/migrarFirestore.ts`, ver seção acima) nunca rodado contra dados reais.
