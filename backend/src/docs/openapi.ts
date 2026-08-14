@@ -602,7 +602,7 @@ export const openApiDocument = {
       },
     },
     "/fazendas/{fazendaId}/uploads/assinar": {
-      post: {
+      get: {
         tags: ["Uploads"],
         summary: "Gera payload de upload assinado para a Cloudinary (evita expor o api_secret no app)",
         parameters: [
