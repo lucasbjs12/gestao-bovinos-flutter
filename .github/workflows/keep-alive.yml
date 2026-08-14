@@ -1,0 +1,25 @@
+name: Keep backend alive
+
+# O plano gratis do Render dorme o servico apos ~15min sem requisicao (e a
+# primeira requisicao depois disso pode levar 50s+ pra responder). Esse
+# workflow bate no /health a cada 10 minutos pra nunca deixar passar esse
+# tempo -- e um contorno, nao uma solucao definitiva: se o Render mudar essa
+# politica no plano gratis, ou se o uso real justificar, o certo e migrar
+# pra um plano pago (remove o spin-down de vez, sem gambiarra).
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://api.gestaobovinos.com.br/api/v1/health)
+          echo "status: $status"
+          if [ "$status" != "200" ]; then
+            echo "::warning::/health respondeu $status em vez de 200"
+          fi
