@@ -181,14 +181,45 @@ class BovinoLocalRepository {
     return rows.isEmpty ? null : Bovino.fromMap(rows.first);
   }
 
+  /// Versão em lote de [buscarPorSyncId]: uma única query pra vários syncIds
+  /// em vez de uma por item -- usada no sync por polling pra evitar N+1.
+  Future<Map<String, Bovino>> mapaPorSyncId(Iterable<String> syncIds) async {
+    final unicos = syncIds.toSet().toList();
+    if (unicos.isEmpty) return {};
+    final result = <String, Bovino>{};
+    for (var i = 0; i < unicos.length; i += 500) {
+      final bloco = unicos.sublist(
+        i,
+        i + 500 > unicos.length ? unicos.length : i + 500,
+      );
+      final placeholders = List.filled(bloco.length, '?').join(',');
+      final rows = await _db.rawQuery(
+        'SELECT b.*, i.descricao AS invernadaDescricao '
+        'FROM bovinos b '
+        'LEFT JOIN invernadas i ON b.invernadaId = i.id '
+        'WHERE b.syncId IN ($placeholders)',
+        bloco,
+      );
+      for (final r in rows) {
+        final b = Bovino.fromMap(r);
+        result[b.syncId] = b;
+      }
+    }
+    return result;
+  }
+
   /// Upsert por syncId: atualiza se já existe localmente, insere caso contrário.
-  Future<int> inserirOuSubstituirPorSyncId(Bovino b) async {
-    final existing = await buscarPorSyncId(b.syncId);
-    if (existing != null) {
+  ///
+  /// [idConhecido] permite pular a busca por syncId quando o chamador já
+  /// resolveu o id local em lote (ver [mapaPorSyncId]) -- evita uma query
+  /// extra por item em loops de sync.
+  Future<int> inserirOuSubstituirPorSyncId(Bovino b, {int? idConhecido}) async {
+    final existingId = idConhecido ?? (await buscarPorSyncId(b.syncId))?.id;
+    if (existingId != null) {
       final m = b.toMap();
-      m['id'] = existing.id;
-      await _db.update('bovinos', m, where: 'id = ?', whereArgs: [existing.id]);
-      return existing.id!;
+      m['id'] = existingId;
+      await _db.update('bovinos', m, where: 'id = ?', whereArgs: [existingId]);
+      return existingId;
     } else {
       final m = b.toMap()..remove('id');
       return await _db.insert('bovinos', m);

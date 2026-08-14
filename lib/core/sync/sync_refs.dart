@@ -29,6 +29,58 @@ class SyncRefs {
     return rows.isEmpty ? null : rows.first['id'] as int?;
   }
 
+  /// Versão em lote de [idPorSyncId]: uma única query `WHERE syncId IN (...)`
+  /// em vez de uma query por item -- usada nos loops de sync pra evitar N+1.
+  static Future<Map<String, int>> idsPorSyncIds(
+    Database db,
+    String tabela,
+    Iterable<String> syncIds,
+  ) async {
+    final unicos = syncIds.toSet().toList();
+    if (unicos.isEmpty) return {};
+    final result = <String, int>{};
+    // SQLite tem limite de variáveis por statement -- processa em blocos.
+    for (var i = 0; i < unicos.length; i += 500) {
+      final bloco = unicos.sublist(i, i + 500 > unicos.length ? unicos.length : i + 500);
+      final placeholders = List.filled(bloco.length, '?').join(',');
+      final rows = await db.query(
+        tabela,
+        columns: ['id', 'syncId'],
+        where: 'syncId IN ($placeholders)',
+        whereArgs: bloco,
+      );
+      for (final r in rows) {
+        result[r['syncId'] as String] = r['id'] as int;
+      }
+    }
+    return result;
+  }
+
+  /// Versão em lote de [syncIdPorId].
+  static Future<Map<int, String>> syncIdsPorIds(
+    Database db,
+    String tabela,
+    Iterable<int> ids,
+  ) async {
+    final unicos = ids.toSet().toList();
+    if (unicos.isEmpty) return {};
+    final result = <int, String>{};
+    for (var i = 0; i < unicos.length; i += 500) {
+      final bloco = unicos.sublist(i, i + 500 > unicos.length ? unicos.length : i + 500);
+      final placeholders = List.filled(bloco.length, '?').join(',');
+      final rows = await db.query(
+        tabela,
+        columns: ['id', 'syncId'],
+        where: 'id IN ($placeholders)',
+        whereArgs: bloco,
+      );
+      for (final r in rows) {
+        result[r['id'] as int] = r['syncId'] as String;
+      }
+    }
+    return result;
+  }
+
   /// Resolve uma referência vinda da nuvem. Se o doc traz syncId, ele manda
   /// (não resolvido localmente = null — nunca cai num id legado de outro
   /// aparelho); sem syncId, usa o id legado como antes.
@@ -45,12 +97,8 @@ class SyncRefs {
   }
 
   static Future<List<String>> syncIdsDeBovinos(Database db, List<int> ids) async {
-    final result = <String>[];
-    for (final id in ids) {
-      final s = await syncIdPorId(db, 'bovinos', id);
-      if (s != null) result.add(s);
-    }
-    return result;
+    final mapa = await syncIdsPorIds(db, 'bovinos', ids);
+    return [for (final id in ids) if (mapa[id] != null) mapa[id]!];
   }
 
   /// Lista de bovinos de um evento vinda da nuvem: bovinoSyncIds (novo) tem
@@ -61,23 +109,10 @@ class SyncRefs {
     required List<int> legacyIds,
   }) async {
     if (syncIds.isNotEmpty) {
-      final result = <int>[];
-      for (final s in syncIds) {
-        final id = await idPorSyncId(db, 'bovinos', s);
-        if (id != null) result.add(id);
-      }
-      return result;
+      final mapa = await idsPorSyncIds(db, 'bovinos', syncIds);
+      return [for (final s in syncIds) if (mapa[s] != null) mapa[s]!];
     }
-    final result = <int>[];
-    for (final id in legacyIds) {
-      final rows = await db.query(
-        'bovinos',
-        columns: ['id'],
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      if (rows.isNotEmpty) result.add(id);
-    }
-    return result;
+    final mapa = await syncIdsPorIds(db, 'bovinos', legacyIds);
+    return [for (final id in legacyIds) if (mapa.containsKey(id)) id];
   }
 }

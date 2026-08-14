@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api/api_client.dart';
@@ -39,7 +38,9 @@ class AuthProvider extends ChangeNotifier {
 
   /// true quando é o dono da fazenda ativa (pode excluir, gerir membros).
   bool get souDono =>
-      _currentUser != null && fazendaId != null && fazendaId == _fazendaPropriaId;
+      _currentUser != null &&
+      fazendaId != null &&
+      fazendaId == _fazendaPropriaId;
 
   /// true quando está vendo a fazenda de outro dono (entrou com código).
   bool get ehConvidado => _currentUser != null && !souDono;
@@ -123,7 +124,11 @@ class AuthProvider extends ChangeNotifier {
     }).toList();
   }
 
-  Future<void> _registrarVinculo(String uid, String fazendaId, String? nome) async {
+  Future<void> _registrarVinculo(
+    String uid,
+    String fazendaId,
+    String? nome,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     final chave = _chaveVinculos(uid);
     final atual = prefs.getStringList(chave) ?? [];
@@ -242,7 +247,10 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> atualizarNomeFazenda(String nome) async {
     if (_fazendaPropriaId == null) return false;
     try {
-      await ApiClient().patch('/fazendas/$_fazendaPropriaId', corpo: {'nome': nome});
+      await ApiClient().patch(
+        '/fazendas/$_fazendaPropriaId',
+        corpo: {'nome': nome},
+      );
       return true;
     } catch (_) {
       return false;
@@ -255,7 +263,10 @@ class AuthProvider extends ChangeNotifier {
     required String novaSenha,
   }) async {
     try {
-      await _authService.alterarSenha(senhaAtual: senhaAtual, novaSenha: novaSenha);
+      await _authService.alterarSenha(
+        senhaAtual: senhaAtual,
+        novaSenha: novaSenha,
+      );
       return null;
     } on ApiException catch (e) {
       if (e.statusCode == 401) return 'Senha atual incorreta.';
