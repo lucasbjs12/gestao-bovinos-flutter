@@ -345,7 +345,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Future<void> _abrirPoliticaPrivacidade() async {
-    final uri = Uri.parse('https://gestaobovinosapp.web.app/privacidade.html');
+    final uri = Uri.parse('https://www.gestaobovinos.com.br/#privacy');
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!mounted || ok) return;
     ScaffoldMessenger.of(context).showSnackBar(

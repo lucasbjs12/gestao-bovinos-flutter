@@ -52,7 +52,7 @@ export default function PerfilPage() {
           />
         )}
         <a
-          href="https://gestaobovinosapp.web.app/privacidade.html"
+          href="https://www.gestaobovinos.com.br/#privacy"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-3 px-5 py-4 hover:bg-cream transition-colors"

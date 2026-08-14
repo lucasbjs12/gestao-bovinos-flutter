@@ -67,7 +67,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _abrirSite() async {
-    final uri = Uri.parse('https://gestaobovinosapp.web.app/');
+    final uri = Uri.parse('https://www.gestaobovinos.com.br/');
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
