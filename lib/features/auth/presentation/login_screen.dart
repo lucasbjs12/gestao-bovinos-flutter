@@ -371,10 +371,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Text(
-                                  'Não tem uma conta? ',
-                                  style: TextStyle(
-                                      fontSize: 14, color: _verdeLabel),
+                                const Flexible(
+                                  child: Text(
+                                    'Não tem uma conta? ',
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                        fontSize: 14, color: _verdeLabel),
+                                  ),
                                 ),
                                 GestureDetector(
                                   onTap: _carregando

@@ -10,7 +10,12 @@ import 'data/backend_auth_service.dart';
 enum AuthStatus { loading, unauthenticated, unverified, authenticated }
 
 class AuthProvider extends ChangeNotifier {
-  final BackendAuthService _authService = BackendAuthService();
+  AuthProvider({BackendAuthService? authService})
+      : _authService = authService ?? BackendAuthService() {
+    _iniciar();
+  }
+
+  final BackendAuthService _authService;
 
   AuthStatus _status = AuthStatus.loading;
   String? _error;
@@ -52,10 +57,6 @@ class AuthProvider extends ChangeNotifier {
 
   static String _chaveFazenda(String uid) => 'fazenda_ativa_$uid';
   static String _chaveVinculos(String uid) => 'fazendas_membro_$uid';
-
-  AuthProvider() {
-    _iniciar();
-  }
 
   Future<void> _iniciar() async {
     if (!await _authService.estaLogado()) {
