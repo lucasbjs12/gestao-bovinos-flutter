@@ -14,6 +14,8 @@ import '../../../core/utils/photo_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../invernadas/data/invernada.dart';
 import '../../invernadas/data/invernada_local_repository.dart';
+import '../../planos/assinatura_provider.dart';
+import '../../planos/presentation/limite_atingido_dialog.dart';
 import '../data/bovino.dart';
 import '../data/bovino_local_repository.dart';
 import '../data/bovino_remote_repository.dart';
@@ -254,6 +256,17 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
 
   Future<void> _salvarLote() async {
     if (_lote.isEmpty || _uid == null) return;
+
+    // Bloqueia o lote inteiro se ele estourar o limite -- mais simples e
+    // mais seguro do que salvar só uma parte e deixar o produtor sem saber
+    // quantos de fato entraram.
+    final assinatura = context.read<AssinaturaProvider>().assinatura;
+    final limite = assinatura?.limiteAnimaisAtual;
+    if (limite != null && assinatura!.contagemAnimais + _lote.length > limite) {
+      await mostrarLimiteAtingidoDialog(context, limite: limite);
+      return;
+    }
+
     setState(() => _salvando = true);
     try {
       final syncSvc = context.read<SyncStatusService>();
@@ -292,6 +305,7 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
       await _clearDraft();
 
       if (!mounted) return;
+      context.read<AssinaturaProvider>().atualizar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

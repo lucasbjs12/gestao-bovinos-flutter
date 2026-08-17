@@ -21,4 +21,5 @@ abstract class AppRoutes {
   static const diarioAtividades = '/diario-atividades';
   static const membros = '/membros';
   static const fazendaAtiva = '/fazenda-ativa';
+  static const planos = '/planos';
 }

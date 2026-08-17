@@ -17,10 +17,12 @@ export const bovinoController = {
   },
 
   async criar(req: Request<unknown, unknown, CriarBovinoInput>, res: Response) {
-    const bovino = await bovinoService.criar(req.fazendaAtiva!.id, req.body, {
-      id: req.usuario!.id,
-      nome: req.usuario!.nome,
-    });
+    const bovino = await bovinoService.criar(
+      req.fazendaAtiva!.id,
+      req.fazendaAtiva!.donoId,
+      req.body,
+      { id: req.usuario!.id, nome: req.usuario!.nome },
+    );
     sucesso(res, bovino, "Bovino cadastrado", 201);
   },
 

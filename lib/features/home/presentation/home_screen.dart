@@ -5,6 +5,8 @@ import '../../../core/routes/app_routes.dart';
 import '../../../core/sync/sync_status_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../fazenda/presentation/seletor_fazenda_sheet.dart';
+import '../../planos/assinatura_provider.dart';
+import '../../planos/data/assinatura_atual.dart';
 import '../../shell/shell_provider.dart';
 import '../home_provider.dart';
 
@@ -398,6 +400,12 @@ class _DashboardContent extends StatelessWidget {
             child: _RebanhoCard(stats: stats),
           ),
 
+          // Plano e limite de animais (só o dono vê -- é a assinatura dele)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: _PlanoCard(),
+          ),
+
           // Acesso rápido
           const _SectionLabel('ACESSO RÁPIDO'),
           Padding(
@@ -445,6 +453,112 @@ class _DashboardContent extends StatelessWidget {
 }
 
 // ─── Card: Total do Rebanho ──────────────────────────────────────────────────
+
+class _PlanoCard extends StatelessWidget {
+  const _PlanoCard();
+
+  /// Item 3 do escopo: avisos discretos conforme o limite se aproxima --
+  /// generaliza os exemplos (12/14/15 de um limite de 15) proporcionalmente
+  /// pra planos com limite diferente, sem perder o texto exato dos casos
+  /// "falta 1" e "atingiu".
+  String? _mensagemAviso(AssinaturaAtual a) {
+    final limite = a.limiteAnimaisAtual;
+    if (limite == null) return null;
+    final restantes = limite - a.contagemAnimais;
+    if (restantes <= 0) {
+      return 'Você atingiu o limite de $limite animais do seu plano.';
+    }
+    if (restantes == 1) {
+      return 'Você possui apenas mais 1 cadastro disponível no seu plano.';
+    }
+    if (restantes <= 3) {
+      return 'Você está chegando ao limite do seu plano.';
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    if (!auth.souDono) return const SizedBox.shrink();
+
+    final assinatura = context.watch<AssinaturaProvider>().assinatura;
+    if (assinatura == null) return const SizedBox.shrink();
+
+    final colorScheme = Theme.of(context).colorScheme;
+    final limite = assinatura.limiteAnimaisAtual;
+    final nomePlano = assinatura.plano?.nome ?? 'Gratuito';
+    final aviso = _mensagemAviso(assinatura);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.pushNamed(context, AppRoutes.planos),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.workspace_premium_outlined, size: 18, color: colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      assinatura.status == StatusPlano.ativo
+                          ? 'Plano $nomePlano'
+                          : 'Plano Gratuito',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                  ),
+                  Text(
+                    limite == null ? '${assinatura.contagemAnimais} animais' : '${assinatura.contagemAnimais} / $limite animais',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ],
+              ),
+              if (limite != null) ...[
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(100),
+                  child: LinearProgressIndicator(
+                    value: assinatura.progresso,
+                    minHeight: 6,
+                    backgroundColor: colorScheme.surfaceContainerHighest,
+                    color: assinatura.limiteAtingido ? colorScheme.error : colorScheme.primary,
+                  ),
+                ),
+              ],
+              if (aviso != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        aviso,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ),
+                    Text(
+                      assinatura.status == StatusPlano.ativo ? 'Gerenciar' : 'Fazer upgrade',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _RebanhoCard extends StatelessWidget {
   final DashboardStats stats;

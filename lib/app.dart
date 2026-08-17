@@ -37,6 +37,8 @@ import 'features/invernadas/invernadas_provider.dart';
 import 'features/invernadas/presentation/cadastro_invernada_screen.dart';
 import 'features/invernadas/presentation/detalhe_invernada_screen.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
+import 'features/planos/assinatura_provider.dart';
+import 'features/planos/presentation/planos_screen.dart';
 import 'features/shell/presentation/main_shell_screen.dart';
 import 'features/shell/shell_provider.dart';
 import 'sync/categoria_progressao_service.dart';
@@ -55,6 +57,7 @@ class GestaoBovinosApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => BovinosProvider()),
         ChangeNotifierProvider(create: (_) => InvernadasProvider()),
         ChangeNotifierProvider(create: (_) => EventosSanitariosProvider()),
+        ChangeNotifierProvider(create: (_) => AssinaturaProvider()),
         ChangeNotifierProvider(create: (_) => SyncStatusService()),
       ],
       child: MaterialApp(
@@ -166,6 +169,11 @@ class GestaoBovinosApp extends StatelessWidget {
                 builder: (_) => const FazendaAtivaScreen(),
                 settings: settings,
               );
+            case AppRoutes.planos:
+              return MaterialPageRoute(
+                builder: (_) => const PlanosScreen(),
+                settings: settings,
+              );
             default:
               return null;
           }
@@ -269,6 +277,7 @@ class _AuthGateState extends State<_AuthGate> {
         context.read<InvernadasProvider>().carregar(fazendaId);
         context.read<EventosSanitariosProvider>().carregar(fazendaId);
         context.read<HomeProvider>().carregar(fazendaId);
+        context.read<AssinaturaProvider>().carregar(fazendaId);
       }
 
       // Progressão de categoria por idade (roda toda vez que o app abre)

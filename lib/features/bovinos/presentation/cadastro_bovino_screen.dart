@@ -14,6 +14,8 @@ import '../../invernadas/data/invernada.dart';
 import '../../invernadas/data/invernada_local_repository.dart';
 import '../../invernadas/data/invernada_remote_repository.dart';
 import '../../invernadas/data/movimentacao_invernada.dart';
+import '../../planos/assinatura_provider.dart';
+import '../../planos/presentation/limite_atingido_dialog.dart';
 import '../data/bovino.dart';
 import '../data/bovino_local_repository.dart';
 import '../data/bovino_remote_repository.dart';
@@ -161,6 +163,18 @@ static const _statusOpcoes = ['Ativo', 'Em quarentena'];
     if (!_formKey.currentState!.validate()) return;
     if (_uid == null) return;
 
+    // Só checa limite pra cadastro novo (editar um animal existente nunca
+    // deve ficar bloqueado). A checagem de verdade é sempre do backend
+    // (ver bovino.service.ts) -- isso aqui só evita criar localmente algo
+    // que o próximo ciclo de sync rejeitaria de qualquer forma.
+    if (_bovinoId == null) {
+      final assinatura = context.read<AssinaturaProvider>().assinatura;
+      if (assinatura != null && assinatura.limiteAtingido) {
+        await mostrarLimiteAtingidoDialog(context, limite: assinatura.limiteAnimaisAtual!);
+        return;
+      }
+    }
+
     setState(() => _carregando = true);
     try {
       final db = await AppDatabase.instance.instanceFor(_uid);
@@ -265,6 +279,12 @@ static const _statusOpcoes = ['Ativo', 'Em quarentena'];
           uid: _uid!,
           sync: context.read<SyncStatusService>(),
         ).salvar(bovinoComId);
+      }
+
+      // Atualiza a contagem "X de Y animais" na hora -- sem esperar o
+      // próximo ciclo de sync pra refletir o cadastro que acabou de acontecer.
+      if (mounted && _bovinoId == null) {
+        context.read<AssinaturaProvider>().atualizar();
       }
 
       if (mounted) Navigator.pop(context, true);

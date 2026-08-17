@@ -1,4 +1,5 @@
 import { AppError } from "../exceptions/AppError";
+import { assinaturaService } from "./assinatura.service";
 import { atividadeRepository } from "../repositories/atividade.repository";
 import { bovinoRepository } from "../repositories/bovino.repository";
 import { invernadaRepository } from "../repositories/invernada.repository";
@@ -49,7 +50,8 @@ export const bovinoService = {
     return bovino;
   },
 
-  async criar(fazendaId: string, dados: CriarBovinoInput, autor: Autor) {
+  async criar(fazendaId: string, donoId: string, dados: CriarBovinoInput, autor: Autor) {
+    await assinaturaService.verificarLimiteParaNovoCadastro(fazendaId, donoId);
     await validarReferencias(fazendaId, dados);
     const bovino = await bovinoRepository.criar(fazendaId, dados);
     await atividadeRepository.registrar({

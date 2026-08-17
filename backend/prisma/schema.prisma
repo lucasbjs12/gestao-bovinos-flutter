@@ -14,6 +14,24 @@ enum StatusAssinatura {
   vencido
 }
 
+// Ciclo de vida do PLANO do produtor (limite de animais) -- distinto de
+// Usuario.statusAssinatura acima, que so controla se a conta pode usar o
+// app (suspensao manual do admin). Um usuario "bloqueado" la e "vencido"
+// aqui sao coisas diferentes: o primeiro e um bloqueio administrativo, o
+// segundo e so o plano pago ter vencido (volta pro Gratuito sozinho).
+enum StatusPlano {
+  gratuito
+  pendente
+  ativo
+  vencido
+  cancelado
+}
+
+enum PeriodicidadePlano {
+  mensal
+  anual
+}
+
 enum Papel {
   dono
   convidado
@@ -65,8 +83,64 @@ model Usuario {
   convitesCriados  Convite[]        @relation("ConviteCriadoPor")
   convitesUsados   Convite[]        @relation("ConviteUsadoPor")
   atividades       Atividade[]
+  assinatura       Assinatura?
 
   @@map("usuarios")
+}
+
+/// Plano comercial (limite de animais + preço). Uma linha por combinação
+/// plano+periodicidade -- "Produtor mensal" e "Produtor anual" são duas
+/// linhas com o mesmo `slug`, pra agrupar na tela sem precisar de outra
+/// tabela. Fica 100% no banco -- nada de valor/limite hardcoded no app.
+model Plano {
+  id            String             @id @default(uuid()) @db.Uuid
+  slug          String
+  nome          String
+  descricao     String?
+  periodicidade PeriodicidadePlano
+  valorCentavos Int                @map("valor_centavos")
+  limiteAnimais Int?               @map("limite_animais")
+  recursos      String[]           @default([])
+  ativo         Boolean            @default(true)
+  destaque      Boolean            @default(false)
+  ordem         Int                @default(0)
+  criadoEm      DateTime           @default(now()) @map("criado_em")
+
+  assinaturas Assinatura[]
+
+  @@unique([slug, periodicidade])
+  @@map("planos")
+}
+
+/// Assinatura do produtor -- 1:1 com Usuario. Só o dono da fazenda tem uma
+/// (convidado opera sob o limite da assinatura de quem convidou, resolvido
+/// em runtime via Fazenda.donoId, igual ao exigirAssinaturaAtiva já faz).
+model Assinatura {
+  id        String @id @default(uuid()) @db.Uuid
+  usuarioId String @unique @map("usuario_id") @db.Uuid
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  planoId String? @map("plano_id") @db.Uuid
+  plano   Plano?  @relation(fields: [planoId], references: [id])
+
+  status             StatusPlano @default(gratuito)
+  // null = ilimitado (mesmo significado de Plano.limiteAnimais).
+  limiteAnimaisAtual Int?        @default(15) @map("limite_animais_atual")
+
+  iniciadaEm      DateTime? @map("iniciada_em")
+  proximaCobranca DateTime? @map("proxima_cobranca")
+  canceladaEm     DateTime? @map("cancelada_em")
+
+  // IDs no Mercado Pago -- preapprovalId é a assinatura recorrente em si,
+  // paymentId é o último pagamento processado (últimos 2 usados pro
+  // webhook casar o evento com o registro certo).
+  mercadoPagoPreapprovalId String? @map("mercadopago_preapproval_id")
+  mercadoPagoPaymentId     String? @map("mercadopago_payment_id")
+
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em")
+
+  @@map("assinaturas")
 }
 
 model RefreshToken {

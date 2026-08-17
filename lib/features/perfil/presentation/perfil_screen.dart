@@ -15,6 +15,7 @@ import '../../onboarding/presentation/onboarding_screen.dart';
 // import '../../admin/data/usuario_assinatura.dart';
 import '../../auth/auth_provider.dart';
 import '../../bovinos/data/bovino_local_repository.dart';
+import '../../planos/assinatura_provider.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -135,6 +136,23 @@ class _PerfilScreenState extends State<PerfilScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.pushNamed(context, AppRoutes.fazendaAtiva),
           ),
+          if (auth.souDono)
+            Consumer<AssinaturaProvider>(
+              builder: (context, assinaturaProvider, _) {
+                final assinatura = assinaturaProvider.assinatura;
+                final nomePlano = assinatura?.plano?.nome ?? 'Gratuito';
+                final limite = assinatura?.limiteAnimaisAtual;
+                return ListTile(
+                  leading: const Icon(Icons.workspace_premium_outlined),
+                  title: const Text('Planos e assinatura'),
+                  subtitle: Text(limite == null
+                      ? nomePlano
+                      : '$nomePlano · ${assinatura!.contagemAnimais} de $limite animais'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.planos),
+                );
+              },
+            ),
 
           const Divider(),
 

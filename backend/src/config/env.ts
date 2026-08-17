@@ -35,4 +35,10 @@ export const env = {
     windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS ?? 900_000),
     max: Number(process.env.RATE_LIMIT_MAX ?? 100),
   },
+  mercadoPago: {
+    accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
+    // Assina a notificacao do webhook -- painel do Mercado Pago em
+    // Suas integracoes > (app) > Webhooks > Assinatura secreta.
+    webhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET,
+  },
 };

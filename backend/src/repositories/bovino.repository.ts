@@ -19,6 +19,14 @@ interface FiltrosListagem {
 }
 
 export const bovinoRepository = {
+  /// Conta o rebanho "ativo" da fazenda (exclui baixados) -- é essa contagem
+  /// que vale contra o limite do plano, não o total histórico já cadastrado.
+  contarAtivos(fazendaId: string) {
+    return prisma.bovino.count({
+      where: { fazendaId, status: { not: "Baixado" } },
+    });
+  },
+
   async listar(fazendaId: string, filtros: FiltrosListagem) {
     const where: Prisma.BovinoWhereInput = {
       fazendaId,

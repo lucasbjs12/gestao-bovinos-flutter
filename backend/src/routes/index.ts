@@ -13,6 +13,9 @@ import { membroRouter } from "./membro.routes";
 import { uploadRouter } from "./upload.routes";
 import { adminRouter } from "./admin.routes";
 import { docsRouter } from "./docs.routes";
+import { planoRouter } from "./plano.routes";
+import { assinaturaRouter } from "./assinatura.routes";
+import { webhookRouter } from "./webhook.routes";
 
 export const apiRouter = Router();
 
@@ -21,8 +24,11 @@ apiRouter.use("/v1/docs", docsRouter);
 apiRouter.use("/v1/auth", authRouter);
 apiRouter.use("/v1/convites", convitePublicoRouter);
 apiRouter.use("/v1/admin", adminRouter);
+apiRouter.use("/v1/planos", planoRouter);
+apiRouter.use("/v1/webhooks", webhookRouter);
 
 apiRouter.use("/v1/fazendas/:fazendaId", fazendaRouter);
+apiRouter.use("/v1/fazendas/:fazendaId/assinatura", assinaturaRouter);
 apiRouter.use("/v1/fazendas/:fazendaId/invernadas", invernadaRouter);
 apiRouter.use("/v1/fazendas/:fazendaId/bovinos", bovinoRouter);
 apiRouter.use("/v1/fazendas/:fazendaId/eventos-sanitarios", eventoSanitarioRouter);

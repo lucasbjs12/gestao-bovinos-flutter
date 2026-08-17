@@ -75,6 +75,13 @@ export const authService = {
         },
       });
 
+      // Plano Gratuito automático -- os 15 animais funcionam como
+      // demonstração real do sistema, sem prazo de teste (ver plano de
+      // assinaturas).
+      await tx.assinatura.create({
+        data: { usuarioId: usuarioCriado.id, status: "gratuito", limiteAnimaisAtual: 15 },
+      });
+
       return { usuario: usuarioCriado, fazenda: fazendaCriada };
     });
 

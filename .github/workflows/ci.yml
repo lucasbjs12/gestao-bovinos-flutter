@@ -82,6 +82,8 @@ jobs:
       FRONTEND_URL: http://localhost:3001
       RATE_LIMIT_WINDOW_MS: 900000
       RATE_LIMIT_MAX: 100
+      MERCADOPAGO_ACCESS_TOKEN: ci-token-fake-nao-bate-na-api-de-verdade
+      MERCADOPAGO_WEBHOOK_SECRET: ci-segredo-de-teste-nao-usar-em-producao
     steps:
       - uses: actions/checkout@v4
 
