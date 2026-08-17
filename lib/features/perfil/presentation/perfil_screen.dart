@@ -336,7 +336,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Future<void> _abrirSite() async {
-    final uri = Uri.parse('https://gestaobovinosapp.web.app/');
+    final uri = Uri.parse('https://www.gestaobovinos.com.br/');
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!mounted || ok) return;
     ScaffoldMessenger.of(context).showSnackBar(
