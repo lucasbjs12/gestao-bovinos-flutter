@@ -10,13 +10,17 @@ import { useAuth } from "@/lib/auth-context";
 import {
   listarUsuarios,
   statusEfetivo,
-  ativarUsuario,
   bloquearUsuario,
+  ativarPlanoNovo,
   Usuario,
-  Plano,
-  DURACAO_PLANO_DIAS,
-  LABEL_PLANO,
 } from "@/lib/admin";
+import {
+  planosApi,
+  Plano as PlanoNovo,
+  valorReais,
+  valorMensalEquivalente,
+  formatarReais,
+} from "@/lib/api/planos";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -48,7 +52,8 @@ export default function PainelAdminPage() {
   const [usuarios, setUsuarios] = useState<Usuario[] | null>(null);
   const [busca, setBusca] = useState("");
   const [modalAtivar, setModalAtivar] = useState<Usuario | null>(null);
-  const [plano, setPlano] = useState<Plano>("mensal");
+  const [planosDisponiveis, setPlanosDisponiveis] = useState<PlanoNovo[]>([]);
+  const [planoNovoId, setPlanoNovoId] = useState("");
   const [vencimentoManual, setVencimentoManual] = useState("");
   const [processando, setProcessando] = useState(false);
 
@@ -57,30 +62,25 @@ export default function PainelAdminPage() {
   }
 
   useEffect(() => {
+    if (!permitido) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (permitido) carregar();
+    carregar();
+    planosApi.listar().then((todos) => setPlanosDisponiveis(todos.filter((p) => p.valorCentavos > 0)));
   }, [permitido]);
 
   function abrirAtivar(u: Usuario) {
     setModalAtivar(u);
-    setPlano("mensal");
+    setPlanoNovoId(u.assinatura?.plano?.id ?? planosDisponiveis[0]?.id ?? "");
     const venc = new Date();
-    venc.setDate(venc.getDate() + DURACAO_PLANO_DIAS.mensal);
-    setVencimentoManual(venc.toISOString().slice(0, 10));
-  }
-
-  function aoTrocarPlano(novo: Plano) {
-    setPlano(novo);
-    const venc = new Date();
-    venc.setDate(venc.getDate() + DURACAO_PLANO_DIAS[novo]);
+    venc.setDate(venc.getDate() + 30);
     setVencimentoManual(venc.toISOString().slice(0, 10));
   }
 
   async function confirmarAtivar() {
-    if (!modalAtivar) return;
+    if (!modalAtivar || !planoNovoId) return;
     setProcessando(true);
     try {
-      await ativarUsuario(modalAtivar.uid, plano, new Date(vencimentoManual));
+      await ativarPlanoNovo(modalAtivar.uid, planoNovoId, new Date(vencimentoManual));
       setModalAtivar(null);
       carregar();
     } finally {
@@ -159,6 +159,9 @@ export default function PainelAdminPage() {
                     </span>
                     {u.isAdmin && <Badge tone="blue">Admin</Badge>}
                     <Badge tone={TONE_STATUS[status]}>{LABEL_STATUS[status]}</Badge>
+                    {u.assinatura?.plano && (
+                      <Badge tone="gold">{u.assinatura.plano.nome}</Badge>
+                    )}
                   </div>
                   <div className="text-xs text-muted truncate">
                     {u.email}
@@ -168,7 +171,9 @@ export default function PainelAdminPage() {
                         · Vence em {dias} dia{dias === 1 ? "" : "s"}
                       </span>
                     )}
-                    {u.plano && !u.isAdmin && ` · ${LABEL_PLANO[u.plano as Plano] ?? u.plano}`}
+                    {u.assinatura?.plano && u.assinatura.proximaCobranca && (
+                      <> · Plano até {new Date(u.assinatura.proximaCobranca).toLocaleDateString("pt-BR")}</>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -202,19 +207,21 @@ export default function PainelAdminPage() {
             <label className="flex flex-col gap-1.5 mb-4">
               <span className="text-xs font-semibold text-text">Plano</span>
               <select
-                value={plano}
-                onChange={(e) => aoTrocarPlano(e.target.value as Plano)}
+                value={planoNovoId}
+                onChange={(e) => setPlanoNovoId(e.target.value)}
                 className="field"
               >
-                {(Object.keys(LABEL_PLANO) as Plano[]).map((p) => (
-                  <option key={p} value={p}>
-                    {LABEL_PLANO[p]}
+                {planosDisponiveis.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome} · {p.periodicidade === "anual" ? "Anual" : "Mensal"} · R${" "}
+                    {formatarReais(valorMensalEquivalente(p))}/mês
+                    {p.periodicidade === "anual" ? ` (R$ ${formatarReais(valorReais(p))}/ano)` : ""}
                   </option>
                 ))}
               </select>
             </label>
             <label className="flex flex-col gap-1.5 mb-5">
-              <span className="text-xs font-semibold text-text">Vencimento</span>
+              <span className="text-xs font-semibold text-text">Próxima cobrança</span>
               <input
                 type="date"
                 value={vencimentoManual}

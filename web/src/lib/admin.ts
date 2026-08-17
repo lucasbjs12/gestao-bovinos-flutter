@@ -1,4 +1,4 @@
-import { adminApi, StatusAssinatura, UsuarioAdmin } from "./api/admin";
+import { adminApi, AssinaturaAdmin, StatusAssinatura, UsuarioAdmin } from "./api/admin";
 
 export type StatusUsuario = StatusAssinatura;
 export type Plano = "mensal" | "trimestral" | "semestral" | "anual";
@@ -32,6 +32,9 @@ export interface Usuario {
   plano?: string;
   vencimento?: Vencimento | null;
   criadoEm?: string;
+  /// Plano/limite do sistema novo (configurável, com Mercado Pago) --
+  /// separado do bloqueio de conta antigo acima (status/plano/vencimento).
+  assinatura: AssinaturaAdmin | null;
 }
 
 function paraUsuario(u: UsuarioAdmin): Usuario {
@@ -44,6 +47,7 @@ function paraUsuario(u: UsuarioAdmin): Usuario {
     plano: u.plano ?? undefined,
     vencimento: u.vencimento ? { toMillis: () => new Date(u.vencimento!).getTime() } : null,
     criadoEm: u.criadoEm,
+    assinatura: u.assinatura,
   };
 }
 
@@ -74,4 +78,14 @@ export async function ativarUsuario(uid: string, plano: Plano, vencimento: Date)
 
 export async function bloquearUsuario(uid: string) {
   await adminApi.atualizarAssinatura(uid, { statusAssinatura: "bloqueado" });
+}
+
+/// Ativa manualmente um dos 5 planos novos pra um usuário (ex: pagamento
+/// combinado fora do Mercado Pago) -- diferente de ativarUsuario acima, que
+/// só mexe no bloqueio de conta antigo.
+export async function ativarPlanoNovo(uid: string, planoId: string, proximaCobranca: Date) {
+  await adminApi.ativarPlano(uid, {
+    planoId,
+    proximaCobranca: proximaCobranca.toISOString().slice(0, 10),
+  });
 }

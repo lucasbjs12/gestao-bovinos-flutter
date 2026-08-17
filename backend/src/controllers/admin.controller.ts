@@ -2,7 +2,11 @@ import { Request, Response } from "express";
 import { adminService } from "../services/admin.service";
 import { sucesso } from "../utils/respostaPadrao";
 import { respostaPaginada } from "../utils/paginacaoResposta";
-import type { AtualizarAssinaturaInput, ListarUsuariosQuery } from "../dtos/admin.dto";
+import type {
+  AtivarPlanoManualInput,
+  AtualizarAssinaturaInput,
+  ListarUsuariosQuery,
+} from "../dtos/admin.dto";
 
 function usuarioSemSenha(usuario: Record<string, unknown> & { senhaHash?: unknown }) {
   const { senhaHash: _senhaHash, ...resto } = usuario;
@@ -22,5 +26,17 @@ export const adminController = {
   ) {
     const usuario = await adminService.atualizarAssinatura(req.params.id, req.body);
     sucesso(res, usuarioSemSenha(usuario), "Assinatura atualizada");
+  },
+
+  async ativarPlano(
+    req: Request<{ id: string }, unknown, AtivarPlanoManualInput>,
+    res: Response,
+  ) {
+    const assinatura = await adminService.ativarPlano(
+      req.params.id,
+      req.body.planoId,
+      req.body.proximaCobranca,
+    );
+    sucesso(res, assinatura, "Plano ativado");
   },
 };

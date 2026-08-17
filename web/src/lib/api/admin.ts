@@ -1,7 +1,15 @@
 import { api } from "../api-client";
 import type { Paginacao } from "./invernadas";
+import type { Plano as PlanoAssinatura, StatusPlano } from "./planos";
 
 export type StatusAssinatura = "pendente" | "ativo" | "bloqueado" | "vencido";
+
+export interface AssinaturaAdmin {
+  status: StatusPlano;
+  limiteAnimaisAtual: number | null;
+  proximaCobranca: string | null;
+  plano: PlanoAssinatura | null;
+}
 
 export interface UsuarioAdmin {
   id: string;
@@ -12,6 +20,9 @@ export interface UsuarioAdmin {
   plano: string | null;
   vencimento: string | null;
   criadoEm: string;
+  /// Assinatura do sistema novo (planos configuráveis) -- distinta dos
+  /// campos acima, que são do bloqueio de conta antigo.
+  assinatura: AssinaturaAdmin | null;
 }
 
 export const adminApi = {
@@ -31,4 +42,7 @@ export const adminApi = {
     id: string,
     dados: { statusAssinatura: StatusAssinatura; plano?: string; vencimento?: string }
   ) => api.patch(`/admin/usuarios/${id}/assinatura`, dados) as Promise<UsuarioAdmin>,
+
+  ativarPlano: (id: string, dados: { planoId: string; proximaCobranca: string }) =>
+    api.post(`/admin/usuarios/${id}/assinatura/ativar-plano`, dados) as Promise<AssinaturaAdmin>,
 };

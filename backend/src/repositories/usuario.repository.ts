@@ -27,6 +27,7 @@ export const usuarioRepository = {
     const [itens, total] = await Promise.all([
       prisma.usuario.findMany({
         where,
+        include: { assinatura: { include: { plano: true } } },
         orderBy: { criadoEm: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,

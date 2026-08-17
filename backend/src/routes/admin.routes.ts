@@ -3,7 +3,11 @@ import { adminController } from "../controllers/admin.controller";
 import { autenticar } from "../middlewares/autenticar";
 import { exigirAdmin } from "../middlewares/exigirAdmin";
 import { validarBody, validarQuery } from "../middlewares/validar";
-import { atualizarAssinaturaSchema, listarUsuariosQuerySchema } from "../dtos/admin.dto";
+import {
+  ativarPlanoManualSchema,
+  atualizarAssinaturaSchema,
+  listarUsuariosQuerySchema,
+} from "../dtos/admin.dto";
 import { asyncHandler } from "../utils/asyncHandler";
 
 export const adminRouter = Router();
@@ -19,4 +23,9 @@ adminRouter.patch(
   "/usuarios/:id/assinatura",
   validarBody(atualizarAssinaturaSchema),
   asyncHandler(adminController.atualizarAssinatura),
+);
+adminRouter.post(
+  "/usuarios/:id/assinatura/ativar-plano",
+  validarBody(ativarPlanoManualSchema),
+  asyncHandler(adminController.ativarPlano),
 );

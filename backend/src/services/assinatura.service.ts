@@ -167,4 +167,25 @@ export const assinaturaService = {
       canceladaEm: new Date(),
     });
   },
+
+  /// Ativação manual por um admin (ex: pagamento combinado fora do Mercado
+  /// Pago, cortesia, suporte). Não mexe em mercadoPagoPreapprovalId -- essa
+  /// assinatura simplesmente não tem uma preapproval associada, então o
+  /// webhook nunca vai tocar nela.
+  async ativarPlanoManual(usuarioId: string, planoId: string, proximaCobranca: Date) {
+    const plano = await planoRepository.buscarPorId(planoId);
+    if (!plano || !plano.ativo) {
+      throw AppError.naoEncontrado("Plano");
+    }
+
+    const atual = await this.obterOuCriar(usuarioId);
+    return assinaturaRepository.atualizar(usuarioId, {
+      planoId: plano.id,
+      status: StatusPlano.ativo,
+      limiteAnimaisAtual: plano.limiteAnimais,
+      iniciadaEm: atual.iniciadaEm ?? new Date(),
+      proximaCobranca,
+      canceladaEm: null,
+    });
+  },
 };
