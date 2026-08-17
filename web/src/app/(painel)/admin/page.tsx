@@ -68,12 +68,26 @@ export default function PainelAdminPage() {
     planosApi.listar().then((todos) => setPlanosDisponiveis(todos.filter((p) => p.valorCentavos > 0)));
   }, [permitido]);
 
+  /// Data padrão de próxima cobrança conforme a periodicidade do plano --
+  /// mensal soma 30 dias, anual soma 365. O admin ainda pode ajustar a mão
+  /// depois, isso só preenche um valor sensato ao trocar de plano.
+  function dataPadraoPara(planoId: string): string {
+    const p = planosDisponiveis.find((x) => x.id === planoId);
+    const venc = new Date();
+    venc.setDate(venc.getDate() + (p?.periodicidade === "anual" ? 365 : 30));
+    return venc.toISOString().slice(0, 10);
+  }
+
+  function aoTrocarPlanoNovo(id: string) {
+    setPlanoNovoId(id);
+    setVencimentoManual(dataPadraoPara(id));
+  }
+
   function abrirAtivar(u: Usuario) {
     setModalAtivar(u);
-    setPlanoNovoId(u.assinatura?.plano?.id ?? planosDisponiveis[0]?.id ?? "");
-    const venc = new Date();
-    venc.setDate(venc.getDate() + 30);
-    setVencimentoManual(venc.toISOString().slice(0, 10));
+    const idInicial = u.assinatura?.plano?.id ?? planosDisponiveis[0]?.id ?? "";
+    setPlanoNovoId(idInicial);
+    setVencimentoManual(dataPadraoPara(idInicial));
   }
 
   async function confirmarAtivar() {
@@ -208,7 +222,7 @@ export default function PainelAdminPage() {
               <span className="text-xs font-semibold text-text">Plano</span>
               <select
                 value={planoNovoId}
-                onChange={(e) => setPlanoNovoId(e.target.value)}
+                onChange={(e) => aoTrocarPlanoNovo(e.target.value)}
                 className="field"
               >
                 {planosDisponiveis.map((p) => (
