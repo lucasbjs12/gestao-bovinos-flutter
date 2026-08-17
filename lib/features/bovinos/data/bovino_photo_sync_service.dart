@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -76,14 +75,10 @@ class BovinoPhotoSyncService {
     return enviadas;
   }
 
-  // Crashlytics não roda na web -- fora dela, registra como não-fatal pra
-  // dar visibilidade em produção sem interromper o fluxo de sync. O logging
-  // em si nunca pode derrubar o sync (ex.: Firebase ainda não inicializado
-  // em testes) -- por isso o try/catch silencioso aqui.
+  // Sem serviço de crash reporting no projeto por enquanto -- só deixa
+  // visível no console de debug, pra não perder o diagnóstico por completo
+  // enquanto isso não é reavaliado (ver revisão de melhorias do projeto).
   void _logNaoFatal(Object e, StackTrace st, String razao) {
-    if (kIsWeb) return;
-    try {
-      FirebaseCrashlytics.instance.recordError(e, st, reason: razao, fatal: false);
-    } catch (_) {}
+    if (kDebugMode) debugPrint('[sync] $razao: $e\n$st');
   }
 }

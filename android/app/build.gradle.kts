@@ -2,10 +2,6 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    // START: FlutterFire Configuration
-    id("com.google.gms.google-services")
-    id("com.google.firebase.crashlytics")
-    // END: FlutterFire Configuration
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -16,7 +12,7 @@ val keystoreProps = Properties().apply {
 }
 
 android {
-    namespace = "lucas.tcc.gestaobovinosapp"
+    namespace = "br.com.gestaobovinos.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -26,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "lucas.tcc.gestaobovinosapp"
+        applicationId = "br.com.gestaobovinos.app"
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
