@@ -87,7 +87,17 @@ export const assinaturaService = {
   async iniciarCheckout(usuarioId: string, planoId: string) {
     const usuario = await usuarioRepository.buscarPorId(usuarioId);
     if (!usuario) throw AppError.naoEncontrado("Usuario");
-    await this.obterOuCriar(usuario.id);
+    const atual = await this.obterOuCriar(usuario.id);
+
+    // Se o produtor já tinha um checkout iniciado e não terminou (clicou
+    // "Assinar" de novo, trocou de plano no meio do caminho), cancela a
+    // preapproval antiga primeiro -- senão ela fica "pending" pra sempre
+    // no painel do Mercado Pago, e se ele terminar de pagar nela por engano
+    // (aba antiga aberta) o webhook não encontra mais essa assinatura aqui
+    // (o id novo já sobrescreveu o antigo).
+    if (atual.status === StatusPlano.pendente && atual.mercadoPagoPreapprovalId) {
+      await mercadoPagoClient.cancelarPreapproval(atual.mercadoPagoPreapprovalId).catch(() => {});
+    }
 
     const plano = await planoRepository.buscarPorId(planoId);
     if (!plano || !plano.ativo) {

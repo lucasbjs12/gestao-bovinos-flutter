@@ -133,8 +133,10 @@ model Assinatura {
 
   // IDs no Mercado Pago -- preapprovalId é a assinatura recorrente em si,
   // paymentId é o último pagamento processado (últimos 2 usados pro
-  // webhook casar o evento com o registro certo).
-  mercadoPagoPreapprovalId String? @map("mercadopago_preapproval_id")
+  // webhook casar o evento com o registro certo). @unique (mesmo sendo
+  // opcional -- Postgres permite múltiplos NULL) porque é o campo que o
+  // webhook usa pra achar a assinatura certa a cada notificação.
+  mercadoPagoPreapprovalId String? @unique @map("mercadopago_preapproval_id")
   mercadoPagoPaymentId     String? @map("mercadopago_payment_id")
 
   criadoEm     DateTime @default(now()) @map("criado_em")

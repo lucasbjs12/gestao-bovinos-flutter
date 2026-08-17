@@ -25,7 +25,7 @@ export const assinaturaRepository = {
   },
 
   buscarPorPreapprovalId(preapprovalId: string) {
-    return prisma.assinatura.findFirst({
+    return prisma.assinatura.findUnique({
       where: { mercadoPagoPreapprovalId: preapprovalId },
       include: { plano: true },
     });
