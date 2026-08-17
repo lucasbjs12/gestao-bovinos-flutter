@@ -12,12 +12,14 @@ import {
   EyeOff,
   ClockAlert,
   ArchiveX,
+  Crown,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { bovinosApi } from "@/lib/api/bovinos";
 import { invernadasApi } from "@/lib/api/invernadas";
 import { eventosApi } from "@/lib/api/eventos";
 import { buscarTodasPaginas } from "@/lib/api/pagination";
+import { planosApi, AssinaturaAtual } from "@/lib/api/planos";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -52,9 +54,10 @@ function grupoCategoria(categoria?: string | null): "vacas" | "novilhos" | "tern
 const OCULTAR_TOTAL_KEY = "ocultar_total_rebanho";
 
 export default function InicioPage() {
-  const { fazendaId, user } = useAuth();
+  const { fazendaId, user, souDono } = useAuth();
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [ocultarTotal, setOcultarTotal] = useState(false);
+  const [assinatura, setAssinatura] = useState<AssinaturaAtual | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -138,6 +141,11 @@ export default function InicioPage() {
     carregar();
   }, [fazendaId]);
 
+  useEffect(() => {
+    if (!fazendaId || !souDono) return;
+    planosApi.obterAssinatura(fazendaId).then(setAssinatura);
+  }, [fazendaId, souDono]);
+
   const primeiroNome = user?.displayName?.split(" ")[0];
 
   return (
@@ -171,6 +179,33 @@ export default function InicioPage() {
           <SubContador label="Outros" valor={resumo?.outros} categoria="" />
         </div>
       </Card>
+
+      {souDono && assinatura && assinatura.limiteAnimaisAtual != null && (
+        <Link
+          href="/planos"
+          className="block mb-6 rounded-2xl border border-border bg-surface px-5 py-4 hover:bg-cream transition-colors"
+        >
+          <div className="flex items-center justify-between gap-3 mb-2.5">
+            <span className="flex items-center gap-2 text-sm font-semibold text-text">
+              <Crown size={15} className="text-gold" />
+              Plano {assinatura.plano?.nome ?? "Gratuito"}
+            </span>
+            <span className="text-xs font-semibold text-muted">
+              {assinatura.contagemAnimais} / {assinatura.limiteAnimaisAtual} animais
+            </span>
+          </div>
+          <div className="h-1.5 rounded-full bg-cream2 overflow-hidden">
+            <div
+              className={`h-full rounded-full ${
+                assinatura.contagemAnimais >= assinatura.limiteAnimaisAtual ? "bg-danger" : "bg-g700"
+              }`}
+              style={{
+                width: `${Math.min(100, (assinatura.contagemAnimais / assinatura.limiteAnimaisAtual) * 100)}%`,
+              }}
+            />
+          </div>
+        </Link>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <StatCard

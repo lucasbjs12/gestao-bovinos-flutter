@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ScrollText, Users, ArrowLeftRight, ShieldCheck, ExternalLink, ChevronRight, SlidersHorizontal, ShieldAlert } from "lucide-react";
+import { ScrollText, Users, ArrowLeftRight, ShieldCheck, ExternalLink, ChevronRight, SlidersHorizontal, ShieldAlert, Crown } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -44,6 +44,9 @@ export default function PerfilPage() {
           icon={<SlidersHorizontal size={17} />}
           label="Personalizar cadastro"
         />
+        {souDono && (
+          <PerfilItem href="/planos" icon={<Crown size={17} />} label="Planos e assinatura" />
+        )}
         {isAdmin && (
           <PerfilItem
             href="/admin"

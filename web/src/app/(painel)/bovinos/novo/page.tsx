@@ -2,7 +2,8 @@
 
 import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, Crown } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { bovinosApi, CategoriaBovino } from "@/lib/api/bovinos";
 import { invernadasApi } from "@/lib/api/invernadas";
@@ -44,6 +45,7 @@ export default function NovoBovinoPage() {
   const [invernadas, setInvernadas] = useState<InvernadaOpcao[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [limiteAtingido, setLimiteAtingido] = useState(false);
   const [campos, setCampos] = useState({
     nomeAnimal: true,
     raca: true,
@@ -84,6 +86,7 @@ export default function NovoBovinoPage() {
       return;
     }
     setErro(null);
+    setLimiteAtingido(false);
     setSalvando(true);
     try {
       await bovinosApi.criar(fazendaId, {
@@ -98,9 +101,14 @@ export default function NovoBovinoPage() {
       });
       router.push("/bovinos");
     } catch (err) {
-      setErro(
-        err instanceof ApiException ? err.message : "Não foi possível salvar. Tente novamente."
-      );
+      if (err instanceof ApiException && err.codigo === "limite_do_plano_atingido") {
+        setLimiteAtingido(true);
+        setErro(err.message);
+      } else {
+        setErro(
+          err instanceof ApiException ? err.message : "Não foi possível salvar. Tente novamente."
+        );
+      }
     } finally {
       setSalvando(false);
     }
@@ -112,10 +120,24 @@ export default function NovoBovinoPage() {
 
       <Card className="p-6">
         <form onSubmit={salvar} className="flex flex-col gap-4">
-          {erro && (
+          {erro && !limiteAtingido && (
             <div className="flex items-start gap-2 bg-danger-bg rounded-lg px-3.5 py-2.5 text-sm text-danger">
               <AlertCircle size={16} className="shrink-0 mt-0.5" />
               {erro}
+            </div>
+          )}
+          {limiteAtingido && (
+            <div className="flex flex-col gap-2.5 bg-gold-50 border border-gold rounded-lg px-4 py-3.5">
+              <div className="flex items-start gap-2 text-sm text-text">
+                <Crown size={16} className="shrink-0 mt-0.5 text-gold" />
+                {erro}
+              </div>
+              <Link
+                href="/planos"
+                className="text-xs font-semibold text-g800 hover:underline self-start"
+              >
+                Ver planos →
+              </Link>
             </div>
           )}
 
