@@ -134,8 +134,13 @@ class _PlanosScreenState extends State<PlanosScreen> {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _CardPlano(
                           plano: plano,
-                          ehAtual: assinatura.plano?.id == plano.id ||
-                              (plano.gratuito && assinatura.plano == null),
+                          // planoId já é gravado no checkout, antes do
+                          // pagamento confirmar -- com status "pendente"
+                          // ainda não houve troca de verdade, então não
+                          // marca o plano-alvo como se já fosse o atual.
+                          ehAtual: assinatura.status != StatusPlano.pendente &&
+                              (assinatura.plano?.id == plano.id ||
+                                  (plano.gratuito && assinatura.plano == null)),
                           carregando: _abrindoCheckout,
                           onAssinar: () => _assinar(plano),
                         ),
@@ -168,7 +173,12 @@ class _CardPlanoAtual extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final nomePlano = assinatura.plano?.nome ?? 'Gratuito';
+    // planoId já é gravado no checkout, antes do pagamento confirmar -- com
+    // status pendente ainda não houve troca de verdade (o limite abaixo
+    // continua sendo o antigo), então não mostra o plano-alvo como atual.
+    final nomePlano = assinatura.status == StatusPlano.pendente
+        ? 'Gratuito'
+        : assinatura.plano?.nome ?? 'Gratuito';
     final limite = assinatura.limiteAnimaisAtual;
 
     return Card(
@@ -204,6 +214,18 @@ class _CardPlanoAtual extends StatelessWidget {
                   backgroundColor: colorScheme.surfaceContainerHighest,
                   color: assinatura.limiteAtingido ? colorScheme.error : colorScheme.primary,
                 ),
+              ),
+            ],
+            if (assinatura.status == StatusPlano.pendente && assinatura.plano != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Assinatura do plano ${assinatura.plano!.nome} em processamento pelo Mercado '
+                'Pago -- pode levar alguns minutos até ativar. O limite acima ainda é o do '
+                'plano atual.',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: colorScheme.onSurfaceVariant),
               ),
             ],
             if (assinatura.status == StatusPlano.cancelado && assinatura.proximaCobranca != null) ...[

@@ -188,7 +188,8 @@ export default function InicioPage() {
           <div className="flex items-center justify-between gap-3 mb-2.5">
             <span className="flex items-center gap-2 text-sm font-semibold text-text">
               <Crown size={15} className="text-gold" />
-              Plano {assinatura.plano?.nome ?? "Gratuito"}
+              Plano{" "}
+              {assinatura.status === "pendente" ? "Gratuito" : assinatura.plano?.nome ?? "Gratuito"}
             </span>
             <span className="text-xs font-semibold text-muted">
               {assinatura.contagemAnimais} / {assinatura.limiteAnimaisAtual} animais

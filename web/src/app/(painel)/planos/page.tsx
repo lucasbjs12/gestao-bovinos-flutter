@@ -102,6 +102,12 @@ export default function PlanosPage() {
   const planosDaPeriodicidade = planos.filter(
     (p) => p.valorCentavos === 0 || p.periodicidade === periodicidade
   );
+  // planoId já é gravado no checkout, antes do pagamento confirmar -- com
+  // status "pendente" ainda não houve troca de verdade (o limite acima
+  // continua sendo o antigo), então não mostra o plano-alvo como se já
+  // fosse o atual.
+  const nomePlanoAtivo =
+    assinatura.status === "pendente" ? "Gratuito" : (assinatura.plano?.nome ?? "Gratuito");
 
   return (
     <div className="max-w-3xl">
@@ -118,7 +124,7 @@ export default function PlanosPage() {
               Seu plano atual
             </div>
             <div className="font-display text-xl font-semibold text-text">
-              {assinatura.plano?.nome ?? "Gratuito"}
+              {nomePlanoAtivo}
             </div>
           </div>
           <Badge tone={badge.tone}>{badge.texto}</Badge>
@@ -142,6 +148,12 @@ export default function PlanosPage() {
           </div>
         )}
 
+        {assinatura.status === "pendente" && assinatura.plano && (
+          <p className="text-xs text-muted mt-3">
+            Assinatura do plano {assinatura.plano.nome} em processamento pelo Mercado Pago --
+            pode levar alguns minutos até ativar. O limite acima ainda é o do plano atual.
+          </p>
+        )}
         {assinatura.status === "cancelado" && assinatura.proximaCobranca && (
           <p className="text-xs text-muted mt-3">
             Cancelada -- continua valendo até {formatarData(assinatura.proximaCobranca)}.
@@ -181,7 +193,8 @@ export default function PlanosPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {planosDaPeriodicidade.map((plano) => {
           const ehAtual =
-            assinatura.plano?.id === plano.id || (plano.valorCentavos === 0 && !assinatura.plano);
+            assinatura.status !== "pendente" &&
+            (assinatura.plano?.id === plano.id || (plano.valorCentavos === 0 && !assinatura.plano));
           const anual = plano.periodicidade === "anual";
           return (
             <Card
