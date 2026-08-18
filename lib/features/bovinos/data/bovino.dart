@@ -4,6 +4,26 @@ const _uuid = Uuid();
 
 enum BovinoOrdem { brinco, nome, categoria, invernada, peso }
 
+/// Paleta fixa de destaque visual (ex: novilhas vacinadas com produto
+/// especial) -- mesmos valores do enum `CorDestaque` do backend, pra não
+/// depender de hex livre nem cada fazenda usar uma cor diferente.
+enum CorDestaque {
+  amarelo,
+  azul,
+  verde,
+  vermelho,
+  roxo,
+  laranja;
+
+  static CorDestaque? fromNome(String? nome) {
+    if (nome == null) return null;
+    for (final c in CorDestaque.values) {
+      if (c.name == nome) return c;
+    }
+    return null;
+  }
+}
+
 class Bovino {
   final int? id;
   final String syncId;
@@ -25,6 +45,8 @@ class Bovino {
   final int? invernadaId;
   final int? idMae;
   final int estaDeCria;
+  final CorDestaque? corDestaque;
+  final String? rotuloDestaque;
 
   // Transient — populated via JOIN/subquery, not DB columns
   final String? invernadaDescricao;
@@ -51,6 +73,8 @@ class Bovino {
     this.invernadaId,
     this.idMae,
     this.estaDeCria = 0,
+    this.corDestaque,
+    this.rotuloDestaque,
     this.invernadaDescricao,
     this.ultimoManejoMillis,
   });
@@ -62,6 +86,9 @@ class Bovino {
     bool clearIdMae = false,
     int? invernadaId,
     bool clearInvernadaId = false,
+    CorDestaque? corDestaque,
+    String? rotuloDestaque,
+    bool clearDestaque = false,
   }) {
     return Bovino(
       id: id ?? this.id,
@@ -84,6 +111,10 @@ class Bovino {
       invernadaId: clearInvernadaId ? null : (invernadaId ?? this.invernadaId),
       idMae: clearIdMae ? null : (idMae ?? this.idMae),
       estaDeCria: estaDeCria,
+      corDestaque: clearDestaque ? null : (corDestaque ?? this.corDestaque),
+      rotuloDestaque: clearDestaque
+          ? null
+          : (rotuloDestaque ?? this.rotuloDestaque),
       // transient fields not in copyWith
     );
   }
@@ -116,6 +147,8 @@ class Bovino {
       'invernadaId': invernadaId,
       'idMae': idMae,
       'estaDeCria': estaDeCria,
+      'corDestaque': corDestaque?.name,
+      'rotuloDestaque': rotuloDestaque,
     };
     if (id != null) m['id'] = id;
     return m;
@@ -143,6 +176,8 @@ class Bovino {
       invernadaId: m['invernadaId'] as int?,
       idMae: m['idMae'] as int?,
       estaDeCria: m['estaDeCria'] as int? ?? 0,
+      corDestaque: CorDestaque.fromNome(m['corDestaque'] as String?),
+      rotuloDestaque: m['rotuloDestaque'] as String?,
       invernadaDescricao: m['invernadaDescricao'] as String?,
       ultimoManejoMillis: m['ultimoManejoMillis'] as int?,
     );

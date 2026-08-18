@@ -140,6 +140,53 @@ describe("Bovinos", () => {
       .send({ numeroBrinco: "BR-400", categoria: "Vaca", pesoAtualKg: null, observacoes: null })
       .expect(200);
   });
+
+  it("aplica e remove o destaque colorido do bovino", async () => {
+    const { headers, fazendaId } = await registrarUsuario();
+    const base = `/api/v1/fazendas/${fazendaId}/bovinos`;
+
+    const criado = await request(app)
+      .post(base)
+      .set(headers)
+      .send({ numeroBrinco: "BR-500", categoria: "Novilha" })
+      .expect(201);
+    const bovinoId = criado.body.data.id;
+
+    const destacado = await request(app)
+      .put(`${base}/${bovinoId}`)
+      .set(headers)
+      .send({
+        numeroBrinco: "BR-500",
+        categoria: "Novilha",
+        corDestaque: "amarelo",
+        rotuloDestaque: "Vacina X - reforco",
+      })
+      .expect(200);
+    expect(destacado.body.data.corDestaque).toBe("amarelo");
+    expect(destacado.body.data.rotuloDestaque).toBe("Vacina X - reforco");
+
+    const removido = await request(app)
+      .put(`${base}/${bovinoId}`)
+      .set(headers)
+      .send({
+        numeroBrinco: "BR-500",
+        categoria: "Novilha",
+        corDestaque: null,
+        rotuloDestaque: null,
+      })
+      .expect(200);
+    expect(removido.body.data.corDestaque).toBeNull();
+    expect(removido.body.data.rotuloDestaque).toBeNull();
+  });
+
+  it("rejeita cor de destaque fora da paleta permitida (422)", async () => {
+    const { headers, fazendaId } = await registrarUsuario();
+    const resposta = await request(app)
+      .post(`/api/v1/fazendas/${fazendaId}/bovinos`)
+      .set(headers)
+      .send({ numeroBrinco: "BR-501", categoria: "Novilha", corDestaque: "rosa-choque" });
+    expect(resposta.status).toBe(422);
+  });
 });
 
 describe("Eventos sanitarios", () => {

@@ -18,9 +18,10 @@ import {
   Syringe,
   Sprout,
   ArrowDownCircle,
+  Palette,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { bovinosApi, MotivoBaixa } from "@/lib/api/bovinos";
+import { bovinosApi, CorDestaque, MotivoBaixa } from "@/lib/api/bovinos";
 import { invernadasApi } from "@/lib/api/invernadas";
 import { movimentacoesApi } from "@/lib/api/movimentacoes";
 import { buscarTodasPaginas } from "@/lib/api/pagination";
@@ -30,6 +31,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Spinner } from "@/components/ui/EmptyState";
 import { BovinoPhoto } from "@/components/ui/BovinoPhoto";
+import { CORES_DESTAQUE, CORES_DESTAQUE_LISTA, NOMES_DESTAQUE } from "@/lib/corDestaque";
 
 interface Bovino {
   id: string;
@@ -40,6 +42,8 @@ interface Bovino {
   foto?: string | null;
   invernadaId?: string | null;
   status: string;
+  corDestaque?: CorDestaque | null;
+  rotuloDestaque?: string | null;
 }
 
 const REPORTS = [
@@ -87,6 +91,9 @@ export default function BovinosPage() {
   const [invernadaDestino, setInvernadaDestino] = useState("");
   const [modalBaixa, setModalBaixa] = useState(false);
   const [motivoBaixa, setMotivoBaixa] = useState<MotivoBaixa>(MOTIVOS[0]);
+  const [modalDestaque, setModalDestaque] = useState(false);
+  const [corDestaqueSelecionada, setCorDestaqueSelecionada] = useState<CorDestaque | null>(null);
+  const [rotuloDestaqueInput, setRotuloDestaqueInput] = useState("");
   const [processando, setProcessando] = useState(false);
   const [visivel, setVisivel] = useState(PAGE_SIZE);
 
@@ -228,6 +235,35 @@ export default function BovinosPage() {
         );
       }
       setModalMover(false);
+      sairDoModoSelecao();
+      carregar();
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  function abrirModalDestaque() {
+    setCorDestaqueSelecionada(null);
+    setRotuloDestaqueInput("");
+    setModalDestaque(true);
+  }
+
+  async function confirmarDestacar(remover: boolean) {
+    if (!fazendaId) return;
+    setProcessando(true);
+    try {
+      await Promise.all(
+        Array.from(selecionados).map((bovinoId) =>
+          bovinosApi.atualizar(fazendaId, bovinoId, {
+            corDestaque: remover ? null : corDestaqueSelecionada,
+            rotuloDestaque: remover
+              ? null
+              : rotuloDestaqueInput.trim() ||
+                (corDestaqueSelecionada ? NOMES_DESTAQUE[corDestaqueSelecionada] : null),
+          })
+        )
+      );
+      setModalDestaque(false);
       sairDoModoSelecao();
       carregar();
     } finally {
@@ -442,10 +478,19 @@ export default function BovinosPage() {
                     )}
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <BovinoPhoto
-                          foto={b.foto}
-                          alt={`Foto do bovino ${b.numeroBrinco}`}
-                        />
+                        <div className="relative shrink-0">
+                          <BovinoPhoto
+                            foto={b.foto}
+                            alt={`Foto do bovino ${b.numeroBrinco}`}
+                          />
+                          {b.corDestaque && (
+                            <span
+                              title={b.rotuloDestaque || NOMES_DESTAQUE[b.corDestaque]}
+                              className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-surface"
+                              style={{ backgroundColor: CORES_DESTAQUE[b.corDestaque] }}
+                            />
+                          )}
+                        </div>
                         <span className="font-mono font-bold text-text tabular-nums">
                           {b.numeroBrinco}
                         </span>
@@ -515,6 +560,14 @@ export default function BovinosPage() {
           >
             Mover
           </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={<Palette size={14} />}
+            onClick={abrirModalDestaque}
+          >
+            Destacar
+          </Button>
           {souDono && (
             <Button
               size="sm"
@@ -557,6 +610,67 @@ export default function BovinosPage() {
                 Cancelar
               </Button>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {modalDestaque && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4">
+          <Card className="w-full max-w-sm p-6">
+            <h2 className="font-display text-lg font-semibold text-text mb-4">
+              Destacar {selecionados.size} animal(is)
+            </h2>
+            <div className="flex gap-2 mb-4">
+              {CORES_DESTAQUE_LISTA.map((cor) => (
+                <button
+                  key={cor}
+                  type="button"
+                  onClick={() => setCorDestaqueSelecionada(cor)}
+                  title={NOMES_DESTAQUE[cor]}
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-105"
+                  style={{
+                    backgroundColor: CORES_DESTAQUE[cor],
+                    border:
+                      corDestaqueSelecionada === cor
+                        ? "2.5px solid #1a1a1a"
+                        : "1px solid rgba(0,0,0,0.15)",
+                  }}
+                >
+                  {corDestaqueSelecionada === cor && (
+                    <span className="text-white text-xs">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <label className="flex flex-col gap-1.5 mb-5">
+              <span className="text-xs font-semibold text-text">Rótulo do destaque</span>
+              <input
+                value={rotuloDestaqueInput}
+                onChange={(e) => setRotuloDestaqueInput(e.target.value)}
+                placeholder="Ex: Vacina X - reforço"
+                className="field"
+              />
+            </label>
+            <div className="flex gap-3">
+              <Button
+                loading={processando}
+                disabled={!corDestaqueSelecionada}
+                onClick={() => confirmarDestacar(false)}
+                className="flex-1"
+              >
+                Aplicar
+              </Button>
+              <Button variant="secondary" onClick={() => confirmarDestacar(true)}>
+                Remover destaque
+              </Button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setModalDestaque(false)}
+              className="w-full text-center text-xs text-muted mt-3 hover:text-text"
+            >
+              Cancelar
+            </button>
           </Card>
         </div>
       )}

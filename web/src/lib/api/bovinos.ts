@@ -12,6 +12,16 @@ export type CategoriaBovino =
 
 export type MotivoBaixa = "Morte" | "Venda" | "Furto" | "Outros";
 
+// Paleta fixa (mesma do backend/app) -- destaque visual manual, ex: novilhas
+// vacinadas com produto especial, marcadas em lote na tela de novo evento.
+export type CorDestaque =
+  | "amarelo"
+  | "azul"
+  | "verde"
+  | "vermelho"
+  | "roxo"
+  | "laranja";
+
 export interface BaixaBovino {
   id: string;
   bovinoId: string;
@@ -39,6 +49,8 @@ export interface Bovino {
   invernadaId: string | null;
   idMae: string | null;
   estaDeCria: boolean;
+  corDestaque: CorDestaque | null;
+  rotuloDestaque: string | null;
   atualizadoEm: string;
   invernada?: { id: string; descricao: string } | null;
   mae?: { id: string; numeroBrinco: string; nomeAnimal: string | null } | null;
@@ -61,6 +73,8 @@ export interface NovoBovinoInput {
   invernadaId?: string | null;
   idMae?: string | null;
   estaDeCria?: boolean;
+  corDestaque?: CorDestaque | null;
+  rotuloDestaque?: string | null;
 }
 
 export const bovinosApi = {

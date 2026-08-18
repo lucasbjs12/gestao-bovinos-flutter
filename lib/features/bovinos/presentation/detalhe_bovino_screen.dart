@@ -8,6 +8,7 @@ import '../../../core/db/app_database.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/sync/sync_status_service.dart';
 import '../../../core/utils/photo_service.dart';
+import '../../../core/widgets/cor_destaque.dart';
 import '../../atividades/atividade_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../eventos_sanitarios/data/evento_sanitario_completo.dart';
@@ -162,6 +163,23 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
     if (mounted) Navigator.pop(context, true);
   }
 
+  Future<void> _removerDestaque() async {
+    final bovino = _bovino!;
+    final db = await AppDatabase.instance.instanceFor(_uid);
+    final atualizado = bovino.copyWith(clearDestaque: true);
+    await BovinoLocalRepository(db).atualizar(atualizado);
+
+    if (mounted) {
+      final syncSvc = context.read<SyncStatusService>();
+      BovinoRemoteRepository(uid: _uid!, sync: syncSvc).salvar(
+        atualizado,
+        registrarAtividade: false,
+      );
+      context.read<BovinosProvider>().recarregar();
+      await _carregar();
+    }
+  }
+
   String _formatarData(int millis) {
     final dt = DateTime.fromMillisecondsSinceEpoch(millis);
     return '${dt.day.toString().padLeft(2, '0')}/'
@@ -258,8 +276,20 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
               tooltip: 'Mais opções',
               onSelected: (v) {
                 if (v == 'excluir') _confirmarExclusao();
+                if (v == 'remover_destaque') _removerDestaque();
               },
               itemBuilder: (_) => [
+                if (b.corDestaque != null)
+                  const PopupMenuItem(
+                    value: 'remover_destaque',
+                    child: Row(
+                      children: [
+                        Icon(Icons.format_color_reset_outlined, size: 20),
+                        SizedBox(width: 10),
+                        Text('Remover destaque'),
+                      ],
+                    ),
+                  ),
                 PopupMenuItem(
                   value: 'excluir',
                   child: Row(
@@ -323,7 +353,42 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
                           const SizedBox(height: 4),
-                          _StatusBadge(status: b.status),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              _StatusBadge(status: b.status),
+                              if (b.corDestaque != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 7, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: corDoDestaque(b.corDestaque!)
+                                        .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      DestaqueDot(
+                                          cor: b.corDestaque!, size: 8),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        b.rotuloDestaque?.isNotEmpty == true
+                                            ? b.rotuloDestaque!
+                                            : nomeDoDestaque(b.corDestaque!),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: corDoDestaque(b.corDestaque!),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
                         ],
                       ),
                     ),

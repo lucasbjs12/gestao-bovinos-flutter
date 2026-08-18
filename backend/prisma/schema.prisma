@@ -47,6 +47,17 @@ enum CategoriaBovino {
   Boi
 }
 
+// Paleta fixa (nao hex livre) pra manter o visual consistente entre
+// app/site e evitar cada fazenda com uma cor diferente pro mesmo sentido.
+enum CorDestaque {
+  amarelo
+  azul
+  verde
+  vermelho
+  roxo
+  laranja
+}
+
 enum MotivoBaixa {
   Morte
   Venda
@@ -270,6 +281,10 @@ model Bovino {
   mae            Bovino?         @relation("MaeFilho", fields: [idMae], references: [id], onDelete: SetNull)
   filhos         Bovino[]        @relation("MaeFilho")
   estaDeCria     Boolean         @default(false) @map("esta_de_cria")
+  // Destaque visual manual (ex: novilhas que tomaram uma vacina especial) --
+  // nao tem relacao com o historico sanitario, e so uma marcacao removivel.
+  corDestaque    CorDestaque?    @map("cor_destaque")
+  rotuloDestaque String?         @map("rotulo_destaque")
   atualizadoEm   DateTime        @default(now()) @updatedAt @map("atualizado_em")
 
   baixas                  BaixaBovino[]

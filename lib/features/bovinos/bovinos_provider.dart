@@ -90,6 +90,30 @@ class BovinosProvider extends ChangeNotifier {
     );
   }
 
+  /// Aplica (ou remove, se [cor] for null) o destaque colorido em lote.
+  /// Retorna os bovinos atualizados para sincronização remota -- mesmo
+  /// padrão de [moverParaInvernada].
+  Future<List<Bovino>> aplicarDestaque(
+    List<int> ids,
+    CorDestaque? cor,
+    String? rotulo,
+  ) async {
+    if (_uid == null) return [];
+    final db = await AppDatabase.instance.instanceFor(_uid);
+    final repo = BovinoLocalRepository(db);
+    final atualizados = <Bovino>[];
+    for (final id in ids) {
+      final atual = await repo.buscarPorId(id);
+      if (atual == null) continue;
+      final novo = cor == null
+          ? atual.copyWith(clearDestaque: true)
+          : atual.copyWith(corDestaque: cor, rotuloDestaque: rotulo);
+      await repo.atualizar(novo);
+      atualizados.add(novo);
+    }
+    return atualizados;
+  }
+
   Future<void> darBaixa(
     int id, {
     required String motivo,

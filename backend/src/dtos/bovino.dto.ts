@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CategoriaBovino, MotivoBaixa } from "@prisma/client";
+import { CategoriaBovino, CorDestaque, MotivoBaixa } from "@prisma/client";
 import { paginacaoQuerySchema } from "./paginacao.dto";
 
 const camposBovino = z.object({
@@ -22,6 +22,12 @@ const camposBovino = z.object({
   invernadaId: z.string().uuid().optional().nullable(),
   idMae: z.string().uuid().optional().nullable(),
   estaDeCria: z.boolean().default(false),
+  // Destaque visual manual (ex: novilhas vacinadas com produto especial) --
+  // rotulo so faz sentido junto com uma cor, mas o Zod nao acopla os dois
+  // aqui; quem aplica isso em lote (a tela de evento em lote) sempre manda
+  // os dois juntos ou os dois nulos.
+  corDestaque: z.nativeEnum(CorDestaque).optional().nullable(),
+  rotuloDestaque: z.string().trim().max(40).optional().nullable(),
 });
 
 export const criarBovinoSchema = camposBovino.extend({

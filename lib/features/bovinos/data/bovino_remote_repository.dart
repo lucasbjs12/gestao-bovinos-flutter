@@ -54,6 +54,8 @@ class BovinoRemoteRepository {
       'invernadaId': invernadaSyncId,
       'idMae': maeSyncId,
       'estaDeCria': b.estaDeCria == 1,
+      'corDestaque': b.corDestaque?.name,
+      'rotuloDestaque': b.rotuloDestaque,
     };
 
     try {

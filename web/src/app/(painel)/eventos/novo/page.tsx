@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, Search, CheckSquare, Square } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { eventosApi, TipoEventoSanitario } from "@/lib/api/eventos";
-import { bovinosApi } from "@/lib/api/bovinos";
+import { bovinosApi, CorDestaque } from "@/lib/api/bovinos";
 import { invernadasApi } from "@/lib/api/invernadas";
 import { buscarTodasPaginas } from "@/lib/api/pagination";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
+import { CORES_DESTAQUE, CORES_DESTAQUE_LISTA, NOMES_DESTAQUE } from "@/lib/corDestaque";
 
 const TIPOS: { value: TipoEventoSanitario; label: string }[] = [
   { value: "Vacinacao", label: "Vacinação" },
@@ -58,6 +59,10 @@ export default function NovoEventoPage() {
   const [dosagem, setDosagem] = useState("");
   const [responsavel, setResponsavel] = useState("");
   const [observacoes, setObservacoes] = useState("");
+
+  const [destacar, setDestacar] = useState(false);
+  const [corDestaque, setCorDestaque] = useState<CorDestaque | null>(null);
+  const [rotuloDestaque, setRotuloDestaque] = useState("");
 
   const [bovinos, setBovinos] = useState<BovinoOpcao[]>([]);
   const [invernadas, setInvernadas] = useState<InvernadaOpcao[]>([]);
@@ -133,6 +138,10 @@ export default function NovoEventoPage() {
       setErro("Selecione o tipo de evento.");
       return;
     }
+    if (destacar && !corDestaque) {
+      setErro("Escolha uma cor para o destaque.");
+      return;
+    }
     setErro(null);
     setEtapa(2);
   }
@@ -157,6 +166,19 @@ export default function NovoEventoPage() {
         invernadaId: filtroInvernada || null,
         bovinoIds: Array.from(selecionados),
       });
+
+      if (destacar && corDestaque) {
+        const rotulo = rotuloDestaque.trim() || NOMES_DESTAQUE[corDestaque];
+        await Promise.all(
+          Array.from(selecionados).map((id) =>
+            bovinosApi.atualizar(fazendaId, id, {
+              corDestaque,
+              rotuloDestaque: rotulo,
+            })
+          )
+        );
+      }
+
       router.push("/eventos");
     } catch {
       setErro("Não foi possível salvar. Tente novamente.");
@@ -238,6 +260,65 @@ export default function NovoEventoPage() {
               className="field resize-none"
             />
           </FormField>
+
+          <div className="border-t border-border-soft pt-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={destacar}
+                onChange={(e) => {
+                  const v = e.target.checked;
+                  setDestacar(v);
+                  if (v && !rotuloDestaque.trim()) setRotuloDestaque(produto.trim());
+                  if (!v) setCorDestaque(null);
+                }}
+                className="w-4 h-4 mt-0.5 accent-g700"
+              />
+              <span>
+                <span className="text-sm font-semibold block">
+                  Destacar os animais selecionados
+                </span>
+                <span className="text-xs text-muted">
+                  Marca esses animais com uma cor na lista, até você remover.
+                </span>
+              </span>
+            </label>
+
+            {destacar && (
+              <div className="mt-3 flex flex-col gap-3">
+                <div className="flex gap-2">
+                  {CORES_DESTAQUE_LISTA.map((cor) => (
+                    <button
+                      key={cor}
+                      type="button"
+                      onClick={() => setCorDestaque(cor)}
+                      title={NOMES_DESTAQUE[cor]}
+                      className="w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-105"
+                      style={{
+                        backgroundColor: CORES_DESTAQUE[cor],
+                        border:
+                          corDestaque === cor
+                            ? "2.5px solid #1a1a1a"
+                            : "1px solid rgba(0,0,0,0.15)",
+                      }}
+                    >
+                      {corDestaque === cor && (
+                        <span className="text-white text-xs">✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <FormField label="Rótulo do destaque">
+                  <input
+                    value={rotuloDestaque}
+                    onChange={(e) => setRotuloDestaque(e.target.value)}
+                    placeholder="Ex: Vacina X - reforço"
+                    className="field"
+                  />
+                </FormField>
+              </div>
+            )}
+          </div>
 
           <div className="flex gap-3 mt-2">
             <Button type="button" onClick={avancar} className="flex-1">

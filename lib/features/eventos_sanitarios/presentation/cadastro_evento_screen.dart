@@ -5,8 +5,11 @@ import 'package:provider/provider.dart';
 
 import '../../../core/db/app_database.dart';
 import '../../../core/sync/sync_status_service.dart';
+import '../../../core/widgets/cor_destaque.dart';
 import '../../auth/auth_provider.dart';
+import '../../bovinos/bovinos_provider.dart';
 import '../../bovinos/data/bovino.dart';
+import '../../bovinos/data/bovino_remote_repository.dart';
 import '../../home/home_provider.dart';
 import '../../bovinos/data/bovino_local_repository.dart';
 import '../../invernadas/data/invernada.dart';
@@ -48,6 +51,11 @@ class _CadastroEventoScreenState extends State<CadastroEventoScreen> {
   String _tipo = EventoSanitario.tipos.first;
   DateTime? _dataEvento;
   int? _invernadaId;
+
+  // ── Destaque visual (opcional) ───────────────────────────────────────────
+  bool _destacarAnimais = false;
+  CorDestaque? _corDestaque;
+  final _rotuloDestaqueCtrl = TextEditingController();
 
   // ── Etapa 2: seleção de animais ──────────────────────────────────────────
   final _buscaCtrl = TextEditingController();
@@ -126,6 +134,7 @@ class _CadastroEventoScreenState extends State<CadastroEventoScreen> {
       ctrl.dispose();
     }
     _dataCtrl.dispose();
+    _rotuloDestaqueCtrl.dispose();
     super.dispose();
   }
 
@@ -209,6 +218,12 @@ class _CadastroEventoScreenState extends State<CadastroEventoScreen> {
 
   void _irParaStep2() {
     if (!_formKey.currentState!.validate()) return;
+    if (_destacarAnimais && _corDestaque == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escolha uma cor para o destaque.')),
+      );
+      return;
+    }
     // Reseta busca e filtro ao entrar na seleção
     _buscaCtrl.clear();
     setState(() {
@@ -356,13 +371,33 @@ class _CadastroEventoScreenState extends State<CadastroEventoScreen> {
       await ManejoRascunhoService.limpar();
 
       if (mounted) {
+        final syncSvc = context.read<SyncStatusService>();
         EventoSanitarioRemoteRepository(
           uid: _uid!,
-          sync: context.read<SyncStatusService>(),
+          sync: syncSvc,
         ).salvar(eventoSalvo, _bovinosSelecionados);
 
+        if (_destacarAnimais && _corDestaque != null) {
+          final rotulo = _rotuloDestaqueCtrl.text.trim().isEmpty
+              ? nomeDoDestaque(_corDestaque!)
+              : _rotuloDestaqueCtrl.text.trim();
+          final destacados = await context.read<BovinosProvider>().aplicarDestaque(
+                _bovinosSelecionados,
+                _corDestaque,
+                rotulo,
+              );
+          if (mounted) {
+            final remoto = BovinoRemoteRepository(uid: _uid!, sync: syncSvc);
+            for (final b in destacados) {
+              remoto.salvar(b, registrarAtividade: false);
+            }
+          }
+        }
+
+        if (!mounted) return;
         context.read<EventosSanitariosProvider>().recarregar();
         context.read<HomeProvider>().carregar(_uid!);
+        context.read<BovinosProvider>().recarregar();
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -562,6 +597,44 @@ class _CadastroEventoScreenState extends State<CadastroEventoScreen> {
                 alignLabelWithHint: true,
               ),
             ),
+            const SizedBox(height: 12),
+
+            // ── Destaque visual (opcional) ─────────────────────────────────
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _destacarAnimais,
+              onChanged: (v) {
+                setState(() {
+                  _destacarAnimais = v;
+                  if (v && _rotuloDestaqueCtrl.text.trim().isEmpty) {
+                    _rotuloDestaqueCtrl.text = _produtoCtrl.text.trim();
+                  }
+                  if (!v) _corDestaque = null;
+                });
+              },
+              title: const Text('Destacar os animais selecionados'),
+              subtitle: const Text(
+                'Marca esses animais com uma cor na lista, até você remover.',
+              ),
+            ),
+            if (_destacarAnimais) ...[
+              const SizedBox(height: 4),
+              SeletorCorDestaque(
+                selecionada: _corDestaque,
+                onSelecionar: (c) => setState(() => _corDestaque = c),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _rotuloDestaqueCtrl,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Rótulo do destaque',
+                  hintText: 'Ex: Vacina X - reforço',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.label_outline),
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             // ── Resumo animais já selecionados (modo edição / restauro) ──

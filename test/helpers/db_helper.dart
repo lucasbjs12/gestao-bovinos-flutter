@@ -41,6 +41,8 @@ Future<Database> criarDbTeste() async {
             invernadaId INTEGER REFERENCES invernadas(id) ON DELETE SET NULL,
             idMae INTEGER REFERENCES bovinos(id) ON DELETE SET NULL,
             estaDeCria INTEGER NOT NULL DEFAULT 0,
+            corDestaque TEXT,
+            rotuloDestaque TEXT,
             syncId TEXT
           )
         ''');

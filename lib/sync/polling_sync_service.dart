@@ -201,6 +201,8 @@ class PollingSyncService {
           foto: foto,
           invernadaId: invernadaId,
           estaDeCria: (d['estaDeCria'] == true) ? 1 : 0,
+          corDestaque: CorDestaque.fromNome(d['corDestaque'] as String?),
+          rotuloDestaque: d['rotuloDestaque'] as String?,
           // `sexo` não existe no backend -- é campo só local, sempre derivado
           // da categoria (mesma regra do formulário de cadastro), pra não
           // zerar o valor a cada rodada de sync.

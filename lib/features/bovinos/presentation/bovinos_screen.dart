@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/db/app_database.dart';
+import '../../../core/widgets/cor_destaque.dart';
 import '../../../core/widgets/marca_painter.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/sync/sync_status_service.dart';
@@ -199,6 +200,44 @@ class _BovinosScreenState extends State<BovinosScreen> {
       acao: 'bovino_movido',
       descricao: 'Moveu $n animal${n > 1 ? 'is' : ''} para $destino',
     );
+
+    if (mounted) provider.recarregar();
+  }
+
+  Future<void> _destacarSelecionados() async {
+    final uid = context.read<AuthProvider>().fazendaId;
+    if (uid == null) return;
+
+    final resultado = await showModalBottomSheet<
+        ({CorDestaque? cor, String? rotulo, bool confirmou})>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SelecionarDestaqueSheet(
+        titulo:
+            'Destacar ${_selecionados.length} animal${_selecionados.length > 1 ? 'is' : ''}',
+      ),
+    );
+
+    if (resultado == null || !resultado.confirmou || !mounted) return;
+
+    final ids = _selecionados.toList();
+    _sairModoSelecao();
+
+    final provider = context.read<BovinosProvider>();
+    final syncSvc = context.read<SyncStatusService>();
+    final atualizados = await provider.aplicarDestaque(
+      ids,
+      resultado.cor,
+      resultado.rotulo,
+    );
+
+    final remoto = BovinoRemoteRepository(uid: uid, sync: syncSvc);
+    for (final b in atualizados) {
+      remoto.salvar(b, registrarAtividade: false);
+    }
 
     if (mounted) provider.recarregar();
   }
@@ -494,6 +533,7 @@ class _BovinosScreenState extends State<BovinosScreen> {
                 count: _selecionados.length,
                 onEvento: _criarEventoParaSelecionados,
                 onMover: _moverInvernadaSelecionados,
+                onDestacar: _destacarSelecionados,
                 onBaixa: _confirmarBaixaEmLote,
                 mostrarBaixa: context.watch<AuthProvider>().souDono,
               )
@@ -632,6 +672,12 @@ class _BovinoCard extends StatelessWidget {
                           child: _buildFoto(bovino.foto, accentColor),
                         ),
                       ),
+                      if (bovino.corDestaque != null)
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: DestaqueDot(cor: bovino.corDestaque!),
+                        ),
                     ],
                   ),
 
@@ -716,6 +762,30 @@ class _BovinoCard extends StatelessWidget {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
+                          ],
+                        ),
+                      ],
+
+                      // ── Rótulo de destaque ──────────────────────────
+                      if (!modoSelecao &&
+                          bovino.corDestaque != null &&
+                          (bovino.rotuloDestaque?.isNotEmpty ?? false)) ...[
+                        const SizedBox(height: 5),
+                        Row(
+                          children: [
+                            DestaqueDot(cor: bovino.corDestaque!, size: 9),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                bovino.rotuloDestaque!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: corDoDestaque(bovino.corDestaque!),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -899,6 +969,7 @@ class _BatchActionBar extends StatelessWidget {
   final int count;
   final VoidCallback onEvento;
   final VoidCallback onMover;
+  final VoidCallback onDestacar;
   final VoidCallback onBaixa;
   final bool mostrarBaixa;
 
@@ -906,6 +977,7 @@ class _BatchActionBar extends StatelessWidget {
     required this.count,
     required this.onEvento,
     required this.onMover,
+    required this.onDestacar,
     required this.onBaixa,
     required this.mostrarBaixa,
   });
@@ -958,6 +1030,20 @@ class _BatchActionBar extends StatelessWidget {
             icon: const Icon(Icons.swap_horiz_rounded, size: 18),
             label: const Text('Mover',
                 style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: onDestacar,
+            tooltip: 'Destacar com uma cor',
+            style: IconButton.styleFrom(
+              foregroundColor: const Color(0xFF8B5CF6),
+              side: const BorderSide(color: Color(0xFF8B5CF6)),
+              padding: const EdgeInsets.all(14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.palette_outlined, size: 18),
           ),
           if (mostrarBaixa) ...[
             const SizedBox(width: 8),
@@ -1231,6 +1317,111 @@ class SelecionarInvernadaSheetState
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Escolher/remover cor de destaque (usado em lote na lista) ──────────────
+
+class SelecionarDestaqueSheet extends StatefulWidget {
+  final String titulo;
+
+  const SelecionarDestaqueSheet({super.key, required this.titulo});
+
+  @override
+  State<SelecionarDestaqueSheet> createState() =>
+      SelecionarDestaqueSheetState();
+}
+
+class SelecionarDestaqueSheetState extends State<SelecionarDestaqueSheet> {
+  CorDestaque? _cor;
+  final _rotuloCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _rotuloCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        14,
+        16,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: cs.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            widget.titulo,
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 16),
+          SeletorCorDestaque(
+            selecionada: _cor,
+            onSelecionar: (c) => setState(() => _cor = c),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _rotuloCtrl,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Rótulo do destaque',
+              hintText: 'Ex: Vacina X - reforço',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.label_outline),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(
+                    context,
+                    (cor: null, rotulo: null, confirmou: true),
+                  ),
+                  child: const Text('Remover destaque'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton(
+                  onPressed: _cor == null
+                      ? null
+                      : () => Navigator.pop(context, (
+                          cor: _cor,
+                          rotulo: _rotuloCtrl.text.trim().isEmpty
+                              ? nomeDoDestaque(_cor!)
+                              : _rotuloCtrl.text.trim(),
+                          confirmou: true,
+                        )),
+                  child: const Text('Aplicar'),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

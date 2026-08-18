@@ -30,7 +30,7 @@ class AppDatabase {
 
     return openDatabase(
       dbPath,
-      version: 5,
+      version: 6,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute(
@@ -51,6 +51,12 @@ class AppDatabase {
         }
         if (oldVersion < 5) {
           await _criarTabelaPendingOps(db);
+        }
+        if (oldVersion < 6) {
+          await db.execute('ALTER TABLE bovinos ADD COLUMN corDestaque TEXT');
+          await db.execute(
+            'ALTER TABLE bovinos ADD COLUMN rotuloDestaque TEXT',
+          );
         }
       },
       onCreate: (db, version) async {
@@ -86,6 +92,8 @@ class AppDatabase {
             invernadaId INTEGER REFERENCES invernadas(id) ON DELETE SET NULL,
             idMae INTEGER REFERENCES bovinos(id) ON DELETE SET NULL,
             estaDeCria INTEGER NOT NULL DEFAULT 0,
+            corDestaque TEXT,
+            rotuloDestaque TEXT,
             syncId TEXT
           )
         ''');
