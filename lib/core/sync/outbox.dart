@@ -149,7 +149,7 @@ class Outbox {
         await db.delete('pending_ops', where: 'id = ?', whereArgs: [id]);
         enviadas++;
       } on ApiException catch (e) {
-        if (_ehErroPermanente(e)) {
+        if (e.ehPermanente) {
           // Reenviar não vai adiantar nunca -- descarta e segue os
           // próximos, em vez de travar a fila pra sempre nesse item.
           await db.delete('pending_ops', where: 'id = ?', whereArgs: [id]);
@@ -161,12 +161,5 @@ class Outbox {
       }
     }
     return enviadas;
-  }
-
-  bool _ehErroPermanente(ApiException e) {
-    return e.statusCode >= 400 &&
-        e.statusCode < 500 &&
-        e.statusCode != 401 &&
-        e.statusCode != 429;
   }
 }

@@ -1,3 +1,5 @@
+import 'package:sqflite/sqflite.dart';
+
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/db/app_database.dart';
@@ -59,23 +61,45 @@ class BovinoRemoteRepository {
     };
 
     try {
-      try {
-        await _api.put('$_base/${b.syncId}', corpo: corpo);
-      } on ApiException catch (e) {
-        if (e.statusCode != 404) rethrow;
-        await _api.post(_base, corpo: {...corpo, 'id': b.syncId});
-      }
+      await _tentarUpsert(b.syncId, corpo);
       _sync.notificarEscrita();
+    } on ApiException catch (e) {
+      // Rejeição de regra de negócio (ex: limite do plano, brinco
+      // duplicado) -- reenviar nunca vai adiantar, então não entra na fila
+      // de retry (senão fica pra sempre "pendente" e some do usuário só
+      // quando o próximo ciclo de sync descobrir por diferença). Quem
+      // chamou decide o que fazer (normalmente: desfazer o registro local
+      // e avisar o produtor).
+      if (e.ehPermanente) rethrow;
+      await _enfileirarPendente(db, b.syncId, corpo);
     } catch (_) {
-      final outbox = Outbox(db);
-      await outbox.enfileirarUpsert(
-        caminhoBase: _base,
-        syncId: b.syncId,
-        corpo: corpo,
-        descricao: 'Bovino ${b.numeroBrinco}',
-      );
-      await outbox.avisar(_sync);
+      // Sem conexão de verdade.
+      await _enfileirarPendente(db, b.syncId, corpo);
     }
+  }
+
+  Future<void> _tentarUpsert(String syncId, Map<String, dynamic> corpo) async {
+    try {
+      await _api.put('$_base/$syncId', corpo: corpo);
+    } on ApiException catch (e) {
+      if (e.statusCode != 404) rethrow;
+      await _api.post(_base, corpo: {...corpo, 'id': syncId});
+    }
+  }
+
+  Future<void> _enfileirarPendente(
+    Database db,
+    String syncId,
+    Map<String, dynamic> corpo,
+  ) async {
+    final outbox = Outbox(db);
+    await outbox.enfileirarUpsert(
+      caminhoBase: _base,
+      syncId: syncId,
+      corpo: corpo,
+      descricao: 'Bovino ${corpo['numeroBrinco']}',
+    );
+    await outbox.avisar(_sync);
   }
 
   Future<void> excluir(String syncId) async {

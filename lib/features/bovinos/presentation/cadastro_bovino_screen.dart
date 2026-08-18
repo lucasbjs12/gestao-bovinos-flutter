@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/api/api_exception.dart';
 import '../../../core/db/app_database.dart';
 import '../../../core/storage/cloudinary_service.dart';
 import '../../../core/sync/sync_status_service.dart';
@@ -273,18 +274,41 @@ static const _statusOpcoes = ['Ativo', 'Em quarentena'];
         }
       }
 
-      // Fire-and-forget para o Firestore
-      if (mounted) {
-        BovinoRemoteRepository(
-          uid: _uid!,
-          sync: context.read<SyncStatusService>(),
-        ).salvar(bovinoComId);
-      }
+      if (!mounted) return;
+      final remoto = BovinoRemoteRepository(
+        uid: _uid!,
+        sync: context.read<SyncStatusService>(),
+      );
 
-      // Atualiza a contagem "X de Y animais" na hora -- sem esperar o
-      // próximo ciclo de sync pra refletir o cadastro que acabou de acontecer.
-      if (mounted && _bovinoId == null) {
-        context.read<AssinaturaProvider>().atualizar();
+      if (_bovinoId == null) {
+        // Cadastro novo: espera a resposta do backend, porque é exatamente
+        // aqui que uma rejeição de regra de negócio (ex: limite do plano)
+        // pode acontecer -- se ela vier, desfaz o registro local em vez de
+        // deixar um animal "fantasma" que o servidor recusou (a checagem
+        // acima só evita o caso óbvio; o backend sempre tem a palavra final).
+        try {
+          await remoto.salvar(bovinoComId);
+        } on ApiException catch (e) {
+          await repo.excluir(bovinoComId.id!);
+          if (mounted) {
+            if (e.codigo == 'limite_do_plano_atingido') {
+              final limiteAtual =
+                  context.read<AssinaturaProvider>().assinatura?.limiteAnimaisAtual;
+              if (limiteAtual != null) {
+                await mostrarLimiteAtingidoDialog(context, limite: limiteAtual);
+              }
+            } else {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(e.message)));
+            }
+          }
+          return;
+        }
+        if (mounted) context.read<AssinaturaProvider>().atualizar();
+      } else {
+        // Edição: fire-and-forget como antes -- não há checagem de limite
+        // nem risco de rejeição definitiva num animal que já existe.
+        remoto.salvar(bovinoComId);
       }
 
       if (mounted) Navigator.pop(context, true);

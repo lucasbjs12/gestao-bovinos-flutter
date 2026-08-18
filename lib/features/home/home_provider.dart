@@ -66,7 +66,7 @@ class HomeProvider extends ChangeNotifier {
       // Contagem de bovinos ativos por categoria (rebanho)
       final catRows = await db.rawQuery(
         "SELECT LOWER(COALESCE(categoria,'')) AS cat, COUNT(*) AS cnt "
-        "FROM bovinos WHERE LOWER(COALESCE(status,'')) != 'inativo' GROUP BY cat",
+        "FROM bovinos WHERE LOWER(COALESCE(status,'')) NOT IN ('inativo','baixado') GROUP BY cat",
       );
       int total = 0, vacas = 0, novilhos = 0, terneiros = 0, outros = 0;
       for (final row in catRows) {
@@ -92,14 +92,14 @@ class HomeProvider extends ChangeNotifier {
       final baixRows = await db.rawQuery(
         'SELECT COUNT(DISTINCT b.id) AS cnt FROM bovinos b '
         'INNER JOIN baixas_bovinos x ON x.bovinoId = b.id '
-        "WHERE LOWER(COALESCE(b.status,'')) = 'inativo'",
+        "WHERE LOWER(COALESCE(b.status,'')) IN ('inativo','baixado')",
       );
       final baixCount = baixRows.first['cnt'] as int? ?? 0;
 
       // Terneiros indefinidos (categoria genérica ainda não definida)
       final indRows = await db.rawQuery(
         "SELECT COUNT(*) AS cnt FROM bovinos WHERE categoria = 'Terneiro(a)' "
-        "AND LOWER(COALESCE(status,'')) != 'inativo'",
+        "AND LOWER(COALESCE(status,'')) NOT IN ('inativo','baixado')",
       );
       final indCount = indRows.first['cnt'] as int? ?? 0;
 
@@ -113,7 +113,7 @@ class HomeProvider extends ChangeNotifier {
         '  FROM bovinos b '
         '  LEFT JOIN evento_sanitario_bovino eb ON eb.bovinoId = b.id '
         '  LEFT JOIN eventos_sanitarios e ON e.id = eb.eventoId '
-        "  WHERE LOWER(COALESCE(b.status,'')) != 'inativo' "
+        "  WHERE LOWER(COALESCE(b.status,'')) NOT IN ('inativo','baixado') "
         '  GROUP BY b.id '
         ') sub WHERE sub.ultimoMillis IS NULL OR sub.ultimoMillis < ?',
         [cutoff],

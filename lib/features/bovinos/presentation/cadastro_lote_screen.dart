@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/api/api_exception.dart';
 import '../../../core/db/app_database.dart';
 import '../../../core/storage/cloudinary_service.dart';
 import '../../../core/sync/sync_status_service.dart';
@@ -274,6 +275,7 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
       final localRepo = BovinoLocalRepository(db);
       final remoteRepo = BovinoRemoteRepository(uid: _uid!, sync: syncSvc);
 
+      var salvos = 0;
       for (final item in _lote) {
         // foto já está salva localmente desde _adicionarAnimal;
         // tenta subir para Cloudinary como upgrade
@@ -299,8 +301,36 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
           foto: fotoFinal,
         );
         final newId = await localRepo.inserir(bovino);
-        remoteRepo.salvar(bovino.copyWith(id: newId));
+
+        // Espera a resposta do backend pra esse item -- é aqui que uma
+        // rejeição de regra de negócio (ex: limite do plano atingido no
+        // meio do lote) pode acontecer. A checagem no início desta função
+        // cobre o caso comum, mas não uma contagem que mudou entre o
+        // clique e o envio. Sem isso, um item recusado ficava salvo
+        // localmente parecendo sucesso (bug real encontrado em teste).
+        try {
+          await remoteRepo.salvar(bovino.copyWith(id: newId));
+          salvos++;
+        } on ApiException catch (e) {
+          await localRepo.excluir(newId);
+          if (mounted) {
+            if (e.codigo == 'limite_do_plano_atingido') {
+              final limiteAtual =
+                  context.read<AssinaturaProvider>().assinatura?.limiteAnimaisAtual;
+              if (limiteAtual != null) {
+                await mostrarLimiteAtingidoDialog(context, limite: limiteAtual);
+              }
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${item.brinco}: ${e.message}')),
+              );
+            }
+          }
+          break;
+        }
       }
+
+      if (salvos == 0) return;
 
       await _clearDraft();
 
@@ -309,8 +339,11 @@ class _CadastroLoteScreenState extends State<CadastroLoteScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${_lote.length} animal${_lote.length != 1 ? 'is' : ''} '
-            'cadastrado${_lote.length != 1 ? 's' : ''} com sucesso!',
+            salvos == _lote.length
+                ? '$salvos animal${salvos != 1 ? 'is' : ''} '
+                    'cadastrado${salvos != 1 ? 's' : ''} com sucesso!'
+                : '$salvos de ${_lote.length} animais cadastrados. '
+                    'O restante foi bloqueado.',
           ),
           backgroundColor: const Color(0xFF2E7D32),
         ),

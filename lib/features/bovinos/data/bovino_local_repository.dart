@@ -15,7 +15,7 @@ class BovinoLocalRepository {
     int? offset,
     BovinoOrdem ordem = BovinoOrdem.brinco,
   }) async {
-    final where = <String>["LOWER(COALESCE(b.status,'')) != 'inativo'"];
+    final where = <String>["LOWER(COALESCE(b.status,'')) NOT IN ('inativo','baixado')"];
     final args = <dynamic>[];
 
     if (termo != null && termo.isNotEmpty) {
@@ -117,7 +117,7 @@ class BovinoLocalRepository {
       'SELECT b.*, i.descricao AS invernadaDescricao '
       'FROM bovinos b '
       'LEFT JOIN invernadas i ON b.invernadaId = i.id '
-      "WHERE b.idMae = ? AND LOWER(COALESCE(b.status,'')) != 'inativo' "
+      "WHERE b.idMae = ? AND LOWER(COALESCE(b.status,'')) NOT IN ('inativo','baixado') "
       'LIMIT 1',
       [maeId],
     );
@@ -129,7 +129,7 @@ class BovinoLocalRepository {
       'SELECT b.*, i.descricao AS invernadaDescricao '
       'FROM bovinos b '
       'LEFT JOIN invernadas i ON b.invernadaId = i.id '
-      "WHERE b.numeroBrinco = ? AND LOWER(COALESCE(b.status,'')) != 'inativo' "
+      "WHERE b.numeroBrinco = ? AND LOWER(COALESCE(b.status,'')) NOT IN ('inativo','baixado') "
       'LIMIT 1',
       [brinco],
     );
@@ -263,7 +263,7 @@ class BovinoLocalRepository {
       LEFT JOIN invernadas i ON i.id = b.invernadaId
       LEFT JOIN evento_sanitario_bovino eb ON eb.bovinoId = b.id
       LEFT JOIN eventos_sanitarios e ON e.id = eb.eventoId
-      WHERE LOWER(COALESCE(b.status, '')) != 'inativo'
+      WHERE LOWER(COALESCE(b.status, '')) NOT IN ('inativo','baixado')
       GROUP BY b.id
       ORDER BY CASE WHEN MAX(e.dataEventoMillis) IS NULL THEN 0 ELSE 1 END ASC,
                MAX(e.dataEventoMillis) ASC,
@@ -278,7 +278,7 @@ class BovinoLocalRepository {
       SELECT b.*, i.descricao AS invernadaDescricao
       FROM bovinos b
       LEFT JOIN invernadas i ON i.id = b.invernadaId
-      WHERE b.categoria = 'Terneiro(a)' AND LOWER(COALESCE(b.status, '')) != 'inativo'
+      WHERE b.categoria = 'Terneiro(a)' AND LOWER(COALESCE(b.status, '')) NOT IN ('inativo','baixado')
       ORDER BY b.numeroBrinco COLLATE NOCASE ASC
     ''');
     return rows.map(Bovino.fromMap).toList();
@@ -292,7 +292,7 @@ class BovinoLocalRepository {
              x.observacoes AS observacoesBaixa
       FROM bovinos b
       INNER JOIN baixas_bovinos x ON x.bovinoId = b.id
-      WHERE LOWER(COALESCE(b.status, '')) = 'inativo'
+      WHERE LOWER(COALESCE(b.status, '')) IN ('inativo','baixado')
       GROUP BY b.id
       ORDER BY x.dataBaixaMillis DESC, b.id DESC
     ''');

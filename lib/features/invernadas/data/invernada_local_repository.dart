@@ -18,7 +18,7 @@ class InvernadaLocalRepository {
         GROUP_CONCAT(DISTINCT b.categoria) AS categoriasBovinos
       FROM invernadas i
       LEFT JOIN bovinos b ON b.invernadaId = i.id
-        AND LOWER(COALESCE(b.status,'')) != 'inativo'
+        AND LOWER(COALESCE(b.status,'')) NOT IN ('inativo','baixado')
       GROUP BY i.id
       ORDER BY i.descricao ASC
     ''');
@@ -32,7 +32,7 @@ class InvernadaLocalRepository {
         GROUP_CONCAT(DISTINCT b.categoria) AS categoriasBovinos
       FROM invernadas i
       LEFT JOIN bovinos b ON b.invernadaId = i.id
-        AND LOWER(COALESCE(b.status,'')) != 'inativo'
+        AND LOWER(COALESCE(b.status,'')) NOT IN ('inativo','baixado')
       WHERE i.id = ?
       GROUP BY i.id
     ''', [id]);

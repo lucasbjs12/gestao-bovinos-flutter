@@ -180,6 +180,12 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
     }
   }
 
+  // 'inativo' é o que este app grava numa baixa feita aqui; 'baixado' é o
+  // valor que o backend usa e que chega via sync quando a baixa foi feita
+  // em outro aparelho -- as duas formas precisam contar como inativo.
+  bool _bovinoAtivo(Bovino b) =>
+      !['inativo', 'baixado'].contains(b.status.toLowerCase());
+
   String _formatarData(int millis) {
     final dt = DateTime.fromMillisecondsSinceEpoch(millis);
     return '${dt.day.toString().padLeft(2, '0')}/'
@@ -654,7 +660,7 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
               icon: const Icon(Icons.edit_outlined),
               label: const Text('Editar dados completos'),
             ),
-            if (b.status.toLowerCase() != 'inativo') ...[
+            if (_bovinoAtivo(b)) ...[
               const SizedBox(height: 8),
               FilledButton.icon(
                 style: FilledButton.styleFrom(
@@ -673,7 +679,7 @@ class _DetalheBovinoScreenState extends State<DetalheBovinoScreen> {
                 label: const Text('Criar evento sanitário'),
               ),
             ],
-            if (souDono && b.status.toLowerCase() != 'inativo') ...[
+            if (souDono && _bovinoAtivo(b)) ...[
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
