@@ -56,6 +56,7 @@ export default function PainelAdminPage() {
   const [planoNovoId, setPlanoNovoId] = useState("");
   const [vencimentoManual, setVencimentoManual] = useState("");
   const [processando, setProcessando] = useState(false);
+  const [erroAtivar, setErroAtivar] = useState<string | null>(null);
 
   async function carregar() {
     setUsuarios(await listarUsuarios());
@@ -85,6 +86,7 @@ export default function PainelAdminPage() {
 
   function abrirAtivar(u: Usuario) {
     setModalAtivar(u);
+    setErroAtivar(null);
     const idInicial = u.assinatura?.plano?.id ?? planosDisponiveis[0]?.id ?? "";
     setPlanoNovoId(idInicial);
     setVencimentoManual(dataPadraoPara(idInicial));
@@ -93,10 +95,15 @@ export default function PainelAdminPage() {
   async function confirmarAtivar() {
     if (!modalAtivar || !planoNovoId) return;
     setProcessando(true);
+    setErroAtivar(null);
     try {
       await ativarPlanoNovo(modalAtivar.uid, planoNovoId, new Date(vencimentoManual));
       setModalAtivar(null);
       carregar();
+    } catch (e) {
+      setErroAtivar(
+        e instanceof Error ? e.message : "Não foi possível ativar o plano. Tente novamente."
+      );
     } finally {
       setProcessando(false);
     }
@@ -243,6 +250,11 @@ export default function PainelAdminPage() {
                 className="field"
               />
             </label>
+            {erroAtivar && (
+              <p className="text-xs text-danger bg-danger-bg rounded-lg px-3 py-2 mb-4">
+                {erroAtivar}
+              </p>
+            )}
             <div className="flex gap-3">
               <Button loading={processando} onClick={confirmarAtivar} className="flex-1">
                 Confirmar
