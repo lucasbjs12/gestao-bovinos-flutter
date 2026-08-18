@@ -89,3 +89,9 @@ export async function ativarPlanoNovo(uid: string, planoId: string, proximaCobra
     proximaCobranca: proximaCobranca.toISOString().slice(0, 10),
   });
 }
+
+/// Apaga a conta e todos os dados dela (fazenda, bovinos, etc). Sem volta --
+/// pensado pra contas de teste/spam, não pra usuários reais.
+export async function removerUsuario(uid: string) {
+  await adminApi.removerUsuario(uid);
+}

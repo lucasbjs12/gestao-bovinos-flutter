@@ -29,3 +29,7 @@ adminRouter.post(
   validarBody(ativarPlanoManualSchema),
   asyncHandler(adminController.ativarPlano),
 );
+adminRouter.delete(
+  "/usuarios/:id",
+  asyncHandler(adminController.removerUsuario),
+);

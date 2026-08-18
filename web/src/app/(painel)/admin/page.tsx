@@ -5,6 +5,7 @@ import {
   Search,
   Ban,
   ShieldAlert,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -12,6 +13,7 @@ import {
   statusEfetivo,
   bloquearUsuario,
   ativarPlanoNovo,
+  removerUsuario,
   Usuario,
 } from "@/lib/admin";
 import {
@@ -115,6 +117,21 @@ export default function PainelAdminPage() {
     carregar();
   }
 
+  async function remover(u: Usuario) {
+    if (
+      !confirm(
+        `Excluir permanentemente a conta de ${u.nome || u.email}, com fazenda e todos os dados? Essa ação não pode ser desfeita.`
+      )
+    )
+      return;
+    try {
+      await removerUsuario(u.uid);
+      carregar();
+    } catch {
+      alert("Não foi possível excluir essa conta.");
+    }
+  }
+
   if (permitido === null) {
     return (
       <Card>
@@ -209,6 +226,16 @@ export default function PainelAdminPage() {
                   >
                     <Ban size={15} />
                   </button>
+                  {!u.isAdmin && (
+                    <button
+                      onClick={() => remover(u)}
+                      className="p-2 rounded-md text-muted-2 hover:text-danger hover:bg-danger-bg transition-colors"
+                      aria-label="Excluir conta"
+                      title="Excluir conta"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
               </div>
             );

@@ -64,3 +64,51 @@ describe("POST /admin/usuarios/:id/assinatura/ativar-plano", () => {
       .expect(403);
   });
 });
+
+describe("DELETE /admin/usuarios/:id", () => {
+  it("admin apaga a conta de outro usuário", async () => {
+    const admin = await registrarUsuario({ email: "admin2@example.com", senha: "senhaDeTeste123" });
+    const alvo = await registrarUsuario();
+    const headersAdmin = await tornarAdminEFazerLogin(
+      admin.usuarioId,
+      "admin2@example.com",
+      "senhaDeTeste123",
+    );
+
+    await request(app)
+      .delete(`/api/v1/admin/usuarios/${alvo.usuarioId}`)
+      .set(headersAdmin)
+      .expect(204);
+
+    // A fazenda dela some junto (nao fica orfa) -- o token ainda "parece"
+    // valido, mas a fazenda por tras dele nao existe mais.
+    const resposta = await request(app)
+      .get(`/api/v1/fazendas/${alvo.fazendaId}/bovinos`)
+      .set(alvo.headers);
+    expect(resposta.status).toBe(404);
+  });
+
+  it("admin não consegue apagar a própria conta por essa rota (422)", async () => {
+    const admin = await registrarUsuario({ email: "admin3@example.com", senha: "senhaDeTeste123" });
+    const headersAdmin = await tornarAdminEFazerLogin(
+      admin.usuarioId,
+      "admin3@example.com",
+      "senhaDeTeste123",
+    );
+
+    await request(app)
+      .delete(`/api/v1/admin/usuarios/${admin.usuarioId}`)
+      .set(headersAdmin)
+      .expect(422);
+  });
+
+  it("usuário comum (não-admin) não consegue apagar conta de outro (403)", async () => {
+    const naoAdmin = await registrarUsuario();
+    const alvo = await registrarUsuario();
+
+    await request(app)
+      .delete(`/api/v1/admin/usuarios/${alvo.usuarioId}`)
+      .set(naoAdmin.headers)
+      .expect(403);
+  });
+});

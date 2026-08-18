@@ -39,4 +39,9 @@ export const adminController = {
     );
     sucesso(res, assinatura, "Plano ativado");
   },
+
+  async removerUsuario(req: Request<{ id: string }>, res: Response) {
+    await adminService.removerUsuario(req.params.id, req.usuario!.id);
+    res.status(204).end();
+  },
 };

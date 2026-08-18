@@ -45,4 +45,6 @@ export const adminApi = {
 
   ativarPlano: (id: string, dados: { planoId: string; proximaCobranca: string }) =>
     api.post(`/admin/usuarios/${id}/assinatura/ativar-plano`, dados) as Promise<AssinaturaAdmin>,
+
+  removerUsuario: (id: string) => api.delete(`/admin/usuarios/${id}`),
 };

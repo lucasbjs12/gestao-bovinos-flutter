@@ -21,6 +21,22 @@ import {
 } from "../utils/token";
 import type { RegistroInput, LoginInput } from "../dtos/auth.dto";
 
+/// Apaga a conta e todos os dados dela -- usada tanto pela auto-exclusao
+/// (`DELETE /auth/me`, apos conferir a senha) quanto pela exclusao feita
+/// por um admin (`DELETE /admin/usuarios/:id`, sem senha, ja que a
+/// autoridade de admin substitui essa confirmacao).
+export async function deletarUsuarioEDados(usuarioId: string) {
+  await prisma.$transaction(async (tx) => {
+    // Fazenda(s) proprias cascadeiam invernadas/bovinos/eventos/membros/etc.
+    await tx.fazenda.deleteMany({ where: { donoId: usuarioId } });
+    // Convites que este usuario criou/usou em fazendas de OUTROS donos nao
+    // tem cascade (relacao opcional) -- desvincula antes de apagar o usuario.
+    await tx.convite.updateMany({ where: { criadoPorId: usuarioId }, data: { criadoPorId: null } });
+    await tx.convite.updateMany({ where: { usadoPorId: usuarioId }, data: { usadoPorId: null } });
+    await tx.usuario.delete({ where: { id: usuarioId } });
+  });
+}
+
 interface TokensGerados {
   accessToken: string;
   refreshToken: string;
@@ -198,15 +214,7 @@ export const authService = {
       throw AppError.naoAutorizado("Senha incorreta");
     }
 
-    await prisma.$transaction(async (tx) => {
-      // Fazenda(s) proprias cascadeiam invernadas/bovinos/eventos/membros/etc.
-      await tx.fazenda.deleteMany({ where: { donoId: usuarioId } });
-      // Convites que este usuario criou/usou em fazendas de OUTROS donos nao
-      // tem cascade (relacao opcional) -- desvincula antes de apagar o usuario.
-      await tx.convite.updateMany({ where: { criadoPorId: usuarioId }, data: { criadoPorId: null } });
-      await tx.convite.updateMany({ where: { usadoPorId: usuarioId }, data: { usadoPorId: null } });
-      await tx.usuario.delete({ where: { id: usuarioId } });
-    });
+    await deletarUsuarioEDados(usuarioId);
   },
 
   async enviarVerificacaoEmail(usuario: { id: string; nome: string; email: string }) {
