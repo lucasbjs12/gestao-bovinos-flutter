@@ -26,7 +26,11 @@ const NAV = [
   { href: "/rfid", label: "RFID", icon: Nfc },
 ];
 
-const NAV_SIDEBAR = [...NAV, { href: "/perfil", label: "Perfil", icon: CircleUserRound }];
+const NAV_SIDEBAR = [
+  ...NAV,
+  { href: "/planos", label: "Planos e Assinatura", icon: Crown },
+  { href: "/perfil", label: "Perfil", icon: CircleUserRound },
+];
 
 export default function PainelLayout({ children }: { children: ReactNode }) {
   const { user, loading, logout, souDono, ehConvidado } = useAuth();
