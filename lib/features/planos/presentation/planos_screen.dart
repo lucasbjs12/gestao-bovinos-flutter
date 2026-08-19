@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/platform/plataforma.dart';
 import '../assinatura_provider.dart';
 import '../data/assinatura_atual.dart';
 import '../data/plano.dart';
@@ -103,57 +104,64 @@ class _PlanosScreenState extends State<PlanosScreen> {
                     assinatura: assinatura,
                     onCancelar: _confirmarCancelamento,
                   ),
-                  const SizedBox(height: 24),
-                  Text('Planos disponíveis', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: SegmentedButton<PeriodicidadePlano>(
-                      segments: const [
-                        ButtonSegment(
-                          value: PeriodicidadePlano.mensal,
-                          label: Text('Mensal'),
-                        ),
-                        ButtonSegment(
-                          value: PeriodicidadePlano.anual,
-                          label: Text('Anual · economize'),
-                        ),
-                      ],
-                      selected: {_periodicidade},
-                      onSelectionChanged: (s) => setState(() => _periodicidade = s.first),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (provider.planos.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else
-                    ...planosDaPeriodicidade.map(
-                      (plano) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _CardPlano(
-                          plano: plano,
-                          // planoId já é gravado no checkout, antes do
-                          // pagamento confirmar -- com status "pendente"
-                          // ainda não houve troca de verdade, então não
-                          // marca o plano-alvo como se já fosse o atual.
-                          ehAtual: assinatura.status != StatusPlano.pendente &&
-                              (assinatura.plano?.id == plano.id ||
-                                  (plano.gratuito && assinatura.plano == null)),
-                          carregando: _abrindoCheckout,
-                          onAssinar: () => _assinar(plano),
-                        ),
+                  // A Apple proíbe checkout externo pra desbloquear algo
+                  // dentro do app (regra 3.1.1) -- no iOS, quem já tem plano
+                  // pago (assinado pelo Android/site) continua vendo o
+                  // card acima normalmente; só a vitrine de "assinar agora"
+                  // some, até existir Apple IAP de verdade.
+                  if (ofereceCheckoutNoApp) ...[
+                    const SizedBox(height: 24),
+                    Text('Planos disponíveis', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    Center(
+                      child: SegmentedButton<PeriodicidadePlano>(
+                        segments: const [
+                          ButtonSegment(
+                            value: PeriodicidadePlano.mensal,
+                            label: Text('Mensal'),
+                          ),
+                          ButtonSegment(
+                            value: PeriodicidadePlano.anual,
+                            label: Text('Anual · economize'),
+                          ),
+                        ],
+                        selected: {_periodicidade},
+                        onSelectionChanged: (s) => setState(() => _periodicidade = s.first),
                       ),
                     ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Os preços mudam apenas se você escolher um plano diferente -- '
-                    'seu limite de animais nunca some, mesmo se um pagamento atrasar.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
+                    const SizedBox(height: 16),
+                    if (provider.planos.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 32),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else
+                      ...planosDaPeriodicidade.map(
+                        (plano) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _CardPlano(
+                            plano: plano,
+                            // planoId já é gravado no checkout, antes do
+                            // pagamento confirmar -- com status "pendente"
+                            // ainda não houve troca de verdade, então não
+                            // marca o plano-alvo como se já fosse o atual.
+                            ehAtual: assinatura.status != StatusPlano.pendente &&
+                                (assinatura.plano?.id == plano.id ||
+                                    (plano.gratuito && assinatura.plano == null)),
+                            carregando: _abrindoCheckout,
+                            onAssinar: () => _assinar(plano),
+                          ),
                         ),
-                  ),
+                      ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Os preços mudam apenas se você escolher um plano diferente -- '
+                      'seu limite de animais nunca some, mesmo se um pagamento atrasar.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
                 ],
               ),
             ),
